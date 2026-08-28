@@ -1,4 +1,4 @@
-# AEGISTWIN: Interactive Supply Chain Resilience Digital Twin
+# AEGIS-TWIN: Interactive Supply Chain Resilience Digital Twin
 
 > [!CAUTION]
 > PROPRIETARY AND CONFIDENTIAL
@@ -20,7 +20,15 @@
 <img src="https://img.shields.io/badge/Deck.gl-000000?style=for-the-badge&logo=uber&logoColor=white" alt="Deck.gl">
 </p>
 
-## Comprehensive Architecture & Feature Specification
+## Architecture & Feature Explanation
+
+## Contents
+
+- [Executive Summary & Vision](#1-executive-summary-vision)
+- [Technology & Rendering Stack](#2-the-technology-rendering-stack)
+- [Core AI Architecture & Synthetic Data](#3-core-ai-architecture-synthetic-data)
+- [Dual Visualization & Triage Engine](#4-dual-visualization-the-triage-engine)
+- [Notifications & Manual Override](#5-notifications-manual-override)
 
 ---
 

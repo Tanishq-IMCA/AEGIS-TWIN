@@ -1,9 +1,8 @@
 
-# AEGISTWIN: Interactive Supply Chain Resilience Digital Twin
+# AEGIS-TWIN: Interactive Supply Chain Resilience Digital Twin
 
 > [!CAUTION]
 > PROPRIETARY AND CONFIDENTIAL
-> This project, along with the associated codebase, constitutes the proprietary and strictly confidential intellectual property of IMCA.
 > This project, along with the associated codebase, constitutes the proprietary and strictly confidential intellectual property of IMCA.
 > UNAUTHORIZED USE IS STRICTLY PROHIBITED. You may not copy, distribute, transmit, reproduce, publish, modify, or create derivative works from this source material without the explicit, documented authorization of the chief development team.
 > Any unauthorized replication, reverse engineering, or dissemination of these proprietary systems will be subject to immediate legal action and aggressive prosecution under applicable intellectual property laws.
@@ -20,6 +19,23 @@
 <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis">
 <img src="https://img.shields.io/badge/Deck.gl-000000?style=for-the-badge&logo=uber&logoColor=white" alt="Deck.gl">
 </p>
+
+## Development Roadmap
+
+## Contents
+
+- [Project Status Overview](#project-status-overview)
+- [Phase 1: AI & Synthetic Data Engine](#phase-1-ai--synthetic-data-engine-not-started)
+- [Phase 2: Deck.gl Macro Command Map](#phase-2-deckgl-macro-command-map-not-started)
+- [Phase 3: WebSocket Streaming & Redis In-Memory State](#phase-3-websocket-streaming--redis-in-memory-state-not-started)
+- [Phase 4: GNN & RL Model Training](#phase-4-gnn--rl-model-training-not-started)
+- [Phase 5: Micro-Tracking Task Pool & Progress Bars](#phase-5-micro-tracking-task-pool--progress-bars-not-started)
+- [Phase 6: Disruption Matrix & Inline Triage UI](#phase-6-disruption-matrix--inline-triage-ui-not-started)
+- [Phase 7: Decay Logic, Deadlines & Cascading Failures](#phase-7-decay-logic-deadlines--cascading-failures-not-started)
+- [Phase 8: God Mode Kill Switch & Manual Overrides](#phase-8-god-mode-kill-switch--manual-overrides-not-started)
+- [Phase 9: Graveyard Metrics & Notification Hub](#phase-9-graveyard-metrics--notification-hub-not-started)
+- [Phase 10: Production Hardening & Benchmark Deployment](#phase-10-production-hardening--benchmark-deployment-not-started)
+- [Execution Order](#execution-order)
 
 ## Project Status Overview
 
