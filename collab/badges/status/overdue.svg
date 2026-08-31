@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="115" height="28">
+  <style>
+    @keyframes flash {
+      0%, 20%, 40% { stroke: #ff0000; stroke-width: 3px; }
+      10%, 30%, 50%, 100% { stroke: transparent; stroke-width: 1px; }
+    }
+    .bg { fill: #311; stroke: transparent; animation: flash 1s infinite; }
+    .text { font-family: 'Segoe UI', sans-serif; font-size: 12px; fill: #ff4444; font-weight: bold; letter-spacing: 1px; }
+  </style>
+  <rect x="2" y="2" width="111" height="24" class="bg" />
+  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" class="text">OVERDUE</text>
+</svg>

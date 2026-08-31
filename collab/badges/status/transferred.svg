@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="115" height="28">
+  <style>
+    @keyframes beep {
+      0%, 15% { stroke: #eab308; stroke-width: 2px; }
+      7%, 22%, 100% { stroke: transparent; stroke-width: 1px; }
+    }
+    .bg { fill: #2a2005; stroke: transparent; animation: beep 1.5s infinite; }
+    .text { font-family: 'Segoe UI', sans-serif; font-size: 12px; fill: #facc15; font-weight: bold; letter-spacing: 1px; }
+  </style>
+  <rect x="2" y="2" width="111" height="24" class="bg" />
+  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" class="text">TRANSFERRED</text>
+</svg>
