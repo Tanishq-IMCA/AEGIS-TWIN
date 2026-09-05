@@ -26,14 +26,14 @@
       <td style="padding: 10px; border: 1px solid #374151;"><a href="collab/tasks/qa_report_review.md" style="color: #60a5fa; text-decoration: none; font-weight: bold;">QA & Literature Survey Review</a></td>
       <td style="padding: 10px; border: 1px solid #374151; text-align: center; font-family: monospace;">05/09/26</td>
       <td style="padding: 0; border: 1px solid #374151; text-align: center; vertical-align: middle;"><img src="collab/badges/members/tanishq.svg" alt="Tanishq.G" style="display: block; margin: auto;"></td>
-      <td style="padding: 0; border: 1px solid #374151; text-align: center; vertical-align: middle;"><img src="collab/badges/status/not_started.svg" alt="Not Started" style="display: block; margin: auto;"></td>
+      <td style="padding: 0; border: 1px solid #374151; text-align: center; vertical-align: middle;"><img src="collab/badges/status/overdue.svg" alt="Overdue" style="display: block; margin: auto;"></td>
     </tr>
     <tr>
       <td style="padding: 10px; border: 1px solid #374151; text-align: center; font-weight: bold;">02</td>
       <td style="padding: 10px; border: 1px solid #374151;"><a href="collab/tasks/system_architecture.md" style="color: #60a5fa; text-decoration: none; font-weight: bold;">System Architecture Design</a></td>
       <td style="padding: 10px; border: 1px solid #374151; text-align: center; font-family: monospace;">04/09/26</td>
       <td style="padding: 0; border: 1px solid #374151; text-align: center; vertical-align: middle;"><img src="collab/badges/members/tanishq.svg" alt="Tanishq.G" style="display: block; margin: auto;"><br><img src="collab/badges/members/aaroh.svg" alt="Aaroh.D" style="display: block; margin: auto;"></td>
-      <td style="padding: 0; border: 1px solid #374151; text-align: center; vertical-align: middle;"><img src="collab/badges/status/in_progress.svg" alt="In Progress" style="display: block; margin: auto;"></td>
+      <td style="padding: 0; border: 1px solid #374151; text-align: center; vertical-align: middle;"><img src="collab/badges/status/completed.svg" alt="Completed" style="display: block; margin: auto;"></td>
     </tr>
     <tr>
       <td style="padding: 10px; border: 1px solid #374151; text-align: center; font-weight: bold;">03</td>
@@ -47,7 +47,7 @@
       <td style="padding: 10px; border: 1px solid #374151;"><a href="collab/tasks/literature_survey.md" style="color: #60a5fa; text-decoration: none; font-weight: bold;">Literature Survey & Gap Identification</a></td>
       <td style="padding: 10px; border: 1px solid #374151; text-align: center; font-family: monospace;">05/09/26</td>
       <td style="padding: 0; border: 1px solid #374151; text-align: center; vertical-align: middle;"><img src="collab/badges/members/surbhi.svg" alt="Surbhi.S" style="display: block; margin: auto;"><br><img src="collab/badges/members/ayushree.svg" alt="Ayushree.J" style="display: block; margin: auto;"></td>
-      <td style="padding: 0; border: 1px solid #374151; text-align: center; vertical-align: middle;"><img src="collab/badges/status/in_progress.svg" alt="In Progress" style="display: block; margin: auto;"></td>
+      <td style="padding: 0; border: 1px solid #374151; text-align: center; vertical-align: middle;"><img src="collab/badges/status/overdue.svg" alt="Overdue" style="display: block; margin: auto;"></td>
     </tr>
   </tbody>
 </table>
@@ -57,7 +57,7 @@
 <div align="center">
   <b>THATS THE END OF THE LIST!</b>
   <br><br>
-  <p style="font-size: 0.85em; color: #9ca3af;">Last Updated: August 31, 2026</p>
+  <p style="font-size: 0.85em; color: #9ca3af;">Last Updated: September 05, 2026</p>
   <br>
   <img src="https://komarev.com/ghpvc/?username=Tanishq-IMCA-AegisTasks&style=for-the-badge&color=6C63FF&label=DASHBOARD+VIEWS" alt="Dashboard Views" />
 </div>
