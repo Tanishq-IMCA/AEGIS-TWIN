@@ -1,103 +1,160 @@
-# AEGISTWIN: Interactive Supply Chain Resilience Digital Twin
+<div align="center">
+  <img src="https://img.shields.io/badge/Status-Active-brightgreen?style=for-the-badge&logo=appveyor" alt="Project Status" />
+  <img src="https://img.shields.io/badge/Python-3.x-blue?style=for-the-badge&logo=python" alt="Python Version" />
+  <img src="https://img.shields.io/badge/Flask-Web%20Framework-lightgrey?style=for-the-badge&logo=flask" alt="Flask Framework" />
+  <img src="https://img.shields.io/badge/Frontend-HTML%2FCSS%2FJS-orange?style=for-the-badge&logo=html5" alt="Frontend Stack" />
+</div>
 
-> [!CAUTION]
-> PROPRIETARY AND CONFIDENTIAL
-> This project, along with the associated codebase, constitutes the proprietary and strictly confidential intellectual property of IMCA.
-> UNAUTHORIZED USE IS STRICTLY PROHIBITED. You may not copy, distribute, transmit, reproduce, publish, modify, or create derivative works from this source material without the explicit, documented authorization of the chief development team.
-> Any unauthorized replication, reverse engineering, or dissemination of these proprietary systems will be subject to immediate legal action and aggressive prosecution under applicable intellectual property laws.
-> This repository does NOT grant an open-source license. All rights are explicitly reserved.
+<br/>
 
-<p align="center">
-<img src="https://img.shields.io/badge/Next-black?style=for-the-badge&logo=next.js&logoColor=white" alt="Next JS">
-<img src="https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB" alt="React">
-<img src="https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54" alt="Python">
-<img src="https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white" alt="PyTorch">
-<img src="https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="TailwindCSS">
-<img src="https://img.shields.io/badge/Framer%20Motion-black?style=for-the-badge&logo=framer&logoColor=white" alt="Framer Motion">
-<img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
-<img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis">
-<img src="https://img.shields.io/badge/Celery-37B24D?style=for-the-badge&logo=celery&logoColor=white" alt="Celery">
-<img src="https://img.shields.io/badge/Deck.gl-000000?style=for-the-badge&logo=uber&logoColor=white" alt="Deck.gl">
-</p>
+<div align="center">
+  <h1>IMCA NEXUS EXPERIENCE</h1>
+  <h3>INDIVIDUAL USER SUPPORT</h3>
+  <p>A sophisticated, multi-faceted personal dashboard and system integration platform.</p>
+</div>
 
-## About This Project
+<hr />
 
-AegisTwin is an AI-powered, real-time logistics resilience platform and digital twin. It is designed to bridge the gap between autonomous deep reinforcement learning orchestration and high-stakes human crisis management. Utilizing Graph Neural Networks (GNNs) for dynamic spatial-temporal network topology representation and Reinforcement Learning (RL) agents for autonomous multi-order batching (2–8 consignments per trailer), the platform operates live supply chain networks entirely via complex synthetic Gymnasium environments and mathematical trajectory rendering.
+## 📖 Overview
 
-Unlike passive monitoring dashboards, AegisTwin implements an active human-in-the-loop paradigm. While the RL agent manages 95% of routine operations, an integrated Disruption Simulator injects 3–5% critical anomalies (e.g., vehicle breakdowns, severe weather, bridge closures, inventory bottlenecks). The UI balances a **Macro View** (a WebGL-rendered spatial map) with a **Micro View** (a side panel of active order progress bars). When crises occur, the system mandates rapid human triage via inline action cards and focus-locked modals, forcing the operator to mitigate cascading failures before strict temporal deadlines expire.
+The **IMCA Nexus Experience** is a comprehensive personal management and bridge system designed to centralize tasks, scheduling, health tracking, social interactions, and system monitoring into a single, cohesive, futuristic dashboard.
 
-## Design Philosophy
+Built with a robust Python/Flask backend and a dynamic frontend, the system supports multi-user profiles, secure data storage, real-time background syncing, and a unique "Relay" architecture for decentralized cloud communication between peers.
 
-**Dual Macro/Micro Command Center:** A dark-mode, high-contrast visual aesthetic inspired by modern air traffic control and telemetry stations. Built with glassmorphism, subtle neon glow indicators, and hardware-accelerated WebGL rendering. It balances the "big picture" macro map with granular, micro-level telemetry progress bars on the side panel to prevent cognitive overload.
+---
 
-**Synthetic Autonomy with Gamified Triage:** Routine operations feel effortless as the RL agent dynamically sweeps, batches, and assigns orders from a live task pool. When critical edge cases occur, the interface executes a "Focus Lock"—blurring the background map and transforming the micro-view progress bar into an urgent, inline Action Card (e.g., `[TOW]`, `[REROUTE]`, `[ABANDON]`) presenting clear trade-offs.
+## ✨ Key Features
 
-**Zero-Lag Hardware Rendering:** AegisTwin completely bypasses expensive, lag-heavy Google Maps trace routing. Instead, it utilizes `Deck.gl`'s `TripsLayer` to mathematically interpolate high-speed vehicle vectors over a static base map, ensuring silky-smooth 60 FPS animations across hundreds of concurrent autonomous units.
+*   **Multi-User Authentication & Identity Management**
+    *   Secure login with credential hashing and "Social Tag" integration.
+    *   Corrupt profile detection and automated restoration protocols.
+    *   Dynamic profile customization (avatars, themes, security questions).
+*   **Nexus Bridge & Cloud Relay**
+    *   Background sync thread for low-impact polling of cloud packets.
+    *   Peer-to-peer messaging and data transfer (friend requests, tasks, calendar events).
+    *   Fallback legacy direct bridge communication.
+*   **System Telemetry**
+    *   Real-time monitoring of CPU, RAM, and Disk utilization via `psutil`.
+    *   Relay storage capacity and health metrics.
+*   **Modular Architecture**
+    *   Segmented data storage management (`storage_manager.py`).
+    *   Dedicated relay service (`relay_manager.py`).
+    *   Pluggable frontend template system.
 
-## Technical Architecture
+---
 
-### Frontend Stack
-- **Next.js 14+** with React 18+ for high-performance SPA transitions, server components, and responsive layout scaling
-- **Deck.gl & Mapbox GL JS** for GPU-accelerated WebGL rendering of dynamic road networks, utilizing `TripsLayer` for mathematical coordinate tracking without third-party API lag
-- **Zustand** for ultra-fast, decentralized frontend state management without unnecessary re-renders
-- **Framer Motion** for cinematic UI transitions, triage inline action cards, and smooth task pool batching animations
-- **Tailwind CSS** with custom glassmorphism design tokens, CSS blur filters, and neon status indicators
-- **TypeScript** for robust end-to-end type safety across telemetry payloads and dispatch commands
+## 🧭 Page Architecture & Modules
 
-### Backend Stack
-- **FastAPI** (Python 3.10+) utilizing async event loops for high-throughput WebSocket streaming and REST endpoints
-- **Redis** as an ultra-fast in-memory state store tracking live vehicle coordinates, node states, and order lifecycles
-- **Celery** for background simulation workers and asynchronous disruption event generation
-- **WebSockets** for 100ms bi-directional streaming between the simulation engine and frontend clients
+The platform is divided into several specialized modules, accessible via the main dashboard:
 
-### AI & Simulation Engine
-- **Synthetic Environment (Gymnasium):** Generates highly complex, non-linear supply chain data, removing the dependency on static real-world historical datasets and allowing for chaotic disruption modeling.
-- **Graph Neural Network (PyTorch Geometric):** Ingests spatial node features (warehouses, hubs, processing latencies) and edge weights (traffic density, weather hazards, route distance) to generate dynamic mathematical network embeddings.
-- **Reinforcement Learning Agent (Ray RLlib / Stable-Baselines3):** Deep Q-Network / PPO policy trained on simulated supply chain environments to autonomously batch 2–8 orders, select available trailers, and optimize dispatch schedules.
-- **Disruption Simulator & Poisson Spawner:** Injects parameterized micro/macro disruptions using a Monte Carlo anomaly engine (3–5% critical anomaly rate) alongside Non-Homogeneous Poisson Process (NHPP) engine generating organic order influxes.
+### 1. Dashboard (`/`)
+The central hub. Displays an overview of operational efficiency, system integrity, current user telemetry, and quick access to all subsystems.
 
-## Operational User Flow
+### 2. Tasks (`/tasks`)
+A comprehensive task operations center. Manage to-dos, track progress, and receive bridged tasks from connected peers.
 
-### 1. Command Console Initialization
-The operator opens the dashboard. The WebGL command map initializes, displaying the regional node network connected by glowing arterial routes. The UI sets up the Dual View: Macro Map in the center, Micro Task Pool on the right.
+### 3. Schedule (`/schedule`)
+Academic and professional time-blocking. Organize daily routines and recurring events.
 
-### 2. Live Task Ingestion & Organic Spawning
-The Organic Spawner begins releasing customer orders based on Poisson distribution. The **Live Task Pool** side panel populates with order cards displaying destination, priority, deadline, and volume.
+### 4. Calendar (`/calendar`)
+Temporal logistics. A full-view calendar for tracking long-term events, deadlines, and bridged appointments.
 
-### 3. Autonomous Batching & Dual Tracking (RL Active)
-Under autonomous mode, the RL Auto-Manager observes unassigned tasks and available trailers. 
-*   **Macro View:** The UI animates 2–8 order cards highlighting in sync, consolidating into a consignment bundle, and assigning to a trailer. The trailer immediately departs along the GNN-optimized shortest path.
-*   **Micro View:** The batched order cards transition into live **Progress Bars** on the side panel, smoothly filling up as the trailer mathematically traverses the map to its destination.
+### 5. Health (`/health`)
+Health operations tracking. Log metrics, track wellness goals, and maintain physical and mental readiness data.
 
-### 4. Windows-Style Notification Stream
-As events unfold, timestamped toasts slide in from the bottom-right:
-- *Green:* Routine delivery completed, trailer returned to depot. (Auto-dismisses in 3s)
-- *Yellow:* Minor congestion detected; GNN dynamically reroutes trailer.
-- *Red:* High-urgency alert requiring human input.
+### 6. Social Matrix (`/social`)
+Manage peer connections. Send friend requests via the Nexus Bridge, monitor peer online status, and engage in real-time or asynchronous messaging.
 
-### 5. Critical Anomaly Trigger & Inline Triage
-When a 3–5% critical disruption strikes (e.g., trailer engine failure carrying perishable cargo):
-*   **Macro Focus Lock:** The background map blurs (`backdrop-filter: blur(10px)`). A pulsing red perimeter wraps the immobilized trailer on the map.
-*   **Micro Action Card:** The side-panel progress bar snaps to red, halts, and expands into a ticking **Inline Action Card** displaying three actionable buttons:
-    1. *[DISPATCH TOW]:* High cost, medium recovery delay.
-    2. *[REROUTE BACKUP]:* Low direct cost, requires load transfer.
-    3. *[ABANDON CARGO]:* High cargo write-off, frees immediate resources.
+### 7. Finances (`/finances`)
+Financial overview and tracking. Monitor budgets, expenses, and financial goals.
 
-### 6. Decay, Cascading Failure, and Graveyard Logging
-If the operator ignores the inline triage alert, the countdown timer eventually expires. The consignment permanently fails, the progress bar dissolves, the trailer icon turns grey and dissolves on the map, and the failure is logged into the **Graveyard Analytics** panel, visibly reducing the system efficiency score.
+### 8. System Config (`/settings`)
+Deep customization of the Nexus instance. Update profile data, configure bridge partner URLs, adjust UI themes, and manage security settings.
 
-### 7. "God Mode" Kill Switch & Manual Injection
-At any moment, the operator can flip the **Autonomous Operations Kill Switch** to assume manual control. The operator can drag-and-drop orders to specific trailers, halt active units with a right-click context menu, or manually trigger custom disruption scenarios.
+---
 
-## Setup & Execution
+## 🛠️ API & System Endpoints
 
-### Prerequisites
-- Node.js (v18+)
-- Python 3.10+
-- Git
-- Redis Server (local or cloud instance)
-- CUDA-enabled GPU (optional, for accelerated PyTorch GNN/RL inference)
+The system exposes a rich internal API for dynamic frontend updates and bridge communications.
 
-```bash
-WIP
-```
+### Authentication & Account Management
+*   `POST /api/login`: Standard user authentication.
+*   `GET/POST /api/users`: Retrieve user lists or register a new identity.
+*   `POST /api/delete_account`: Purge user data (requires password).
+*   `POST /api/delete_account_no_pass`: Purge user data (active session required).
+*   `POST /api/restore_corrupt`: Emergency protocol to repair missing profile data.
+
+### Bridge & Relay Communications
+*   `POST /api/bridge/receive`: Endpoint for receiving legacy direct-bridge packets.
+*   `GET/POST /api/bridge/config`: Manage direct bridge partner URLs.
+*   `GET /api/bridge/status`: Retrieve bridge and cloud relay connectivity metrics.
+*   `GET /api/relay/discovery`: Discover available peers on the active relay network.
+*   `POST /api/relay/friend_request`: Push a connection request via cloud relay.
+
+### Social & Messaging
+*   `POST /api/friend_request`: Send a standard friend request.
+*   `POST /api/friend_request/accept` / `decline`: Manage incoming requests.
+*   `GET /api/friends/status`: Poll online status of connected peers.
+*   `GET/POST /api/messages/<target_user>`: Retrieve or send direct messages.
+
+### System Data
+*   `GET /api/sys_usage`: Hardware telemetry (CPU, RAM, GPU/Disk).
+*   `GET /api/relay/storage_status`: Cloud relay storage capacity metrics.
+*   `GET/POST /api/storage/<key>`: Generic endpoint for saving/retrieving modular user data.
+
+---
+
+## ⚠️ Error Codes & Anomalies
+
+The Nexus Experience employs a standardized error coding system for precise debugging and support.
+
+| Code | Description | Resolution / Notes |
+| :--- | :--- | :--- |
+| **NX-101** | Invalid Credentials | Password or username mismatch during login or account deletion. |
+| **NX-300** | Missing Credentials | Required fields (username/password) were omitted from the payload. |
+| **NX-400** | Security Protocol Violation | Password does not meet minimum length (12 chars) requirements. |
+| **NX-401** | Integrity Check Failed | Missing capitals, malformed Social Tag, or duplicate identity detected. |
+| **NX-500** | Internal Server Error | Unhandled exception in route execution. Check `data/logs/system.log`. |
+
+*Note: Corrupt identities (missing critical JSON fields) are handled dynamically via the UI and can be restored using the `/api/restore_corrupt` protocol.*
+
+---
+
+## 💻 Tech Stack & Requirements
+
+*   **Backend:** Python 3.x, Flask, Werkzeug
+*   **System Telemetry:** `psutil`
+*   **Storage:** Local JSON architecture (NoSQL-style document storage)
+*   **Frontend:** HTML5, CSS3, Vanilla JavaScript (Jinja2 Templating)
+
+**Dependencies:** See `requirements.txt` or `pyproject.toml` for exact versioning. (Key packages: `Flask`, `requests`, `psutil`).
+
+---
+
+## 🚀 Installation & Initialization
+
+1.  **Clone the Repository:**
+    ```bash
+    git clone <repository_url>
+    cd IMCA-NEXUS-EXPERIENCE_INDIVIDUAL-USER-SUPPORT
+    ```
+
+2.  **Environment Setup:**
+    Ensure you have Python 3 installed. It is recommended to use a virtual environment or `poetry` / `uv` (as indicated by lock files in the root).
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+3.  **Boot Sequence:**
+    ```bash
+    python app.py
+    ```
+    The Nexus will initialize on `0.0.0.0:5000`.
+
+4.  **First Run:**
+    Navigate to `http://localhost:5000`. You will be redirected to the login/setup page to create your first primary Identity.
+
+---
+<div align="center">
+  <i>"System Integrity: Nominal."</i>
+</div>

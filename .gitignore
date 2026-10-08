@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+.pythonlibs/
+.venv/
+venv/
+.env
+data/users/
+data/user_data/
