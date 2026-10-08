@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMCA NEXUS EXPERIENCE</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-blur: blur(30px);
+            --accent-orange: #4ADE80;
+            --accent-glow: rgba(74, 222, 128, 0.5);
+            --font-title: 'Pasajero', sans-serif;
+            --font-body: 'Bourgeois', sans-serif;
+        }
+
+        @font-face {
+            font-family: 'Pasajero';
+            src: url("{{ url_for('static', filename='fonts/Pasajero.otf') }}");
+        }
+
+        @font-face {
+            font-family: 'Bourgeois';
+            src: url("{{ url_for('static', filename='fonts/Bourgeois-Book.otf') }}");
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Bourgeois', sans-serif;
+            background-color: #000;
+        }
+
+        .startup-background {
+            position: fixed;
+            inset: 0;
+            background-image: url('/static/wallpapers/static/nexus_onboarding_protocol.jpeg');
+            background-size: cover;
+            background-position: center;
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+        }
+
+        .startup-background.active {
+            opacity: 1;
+        }
+
+        .login-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .welcome-text {
+            color: white;
+            font-size: 2.5rem;
+            font-family: 'Pasajero', sans-serif;
+            letter-spacing: 4px;
+            opacity: 0;
+            text-align: center;
+            transition: opacity 2s ease-in-out, filter 2s ease-in-out;
+            filter: blur(10px);
+            z-index: 20;
+        }
+
+        .welcome-text.active {
+            opacity: 1;
+            filter: blur(0);
+        }
+
+        .glass-login-panel {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            transition: width 1.5s cubic-bezier(0.19, 1, 0.22, 1);
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .glass-login-panel.active {
+            width: 30%;
+        }
+
+        .begin-btn {
+            margin-top: 40px;
+            padding: 15px 50px;
+            background: rgba(255, 255, 255, 0.002);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            font-family: 'Pasajero', sans-serif;
+            letter-spacing: 2px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 1s ease, transform 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+            pointer-events: none;
+            display: block;
+            margin: 40px auto 0;
+            text-align: center;
+            text-decoration: none;
+            z-index: 1000;
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0);
+        }
+
+        .begin-btn.visible {
+            opacity: 1;
+            pointer-events: all;
+            animation: beginGlow 3s infinite alternate;
+        }
+
+        @keyframes beginGlow {
+            0% { box-shadow: 0 0 10px rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); }
+            100% { box-shadow: 0 0 30px rgba(255, 255, 255, 0.4); border-color: rgba(255, 255, 255, 0.6); }
+        }
+
+        .begin-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border-color: white;
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.5);
+        }
+
+        .fade-out {
+            opacity: 0 !important;
+            filter: blur(20px) !important;
+            transform: scale(0.9) !important;
+            transition: all 1.5s cubic-bezier(0.19, 1, 0.22, 1) !important;
+        }
+
+        .nexus-btn-pro {
+            padding: 12px 30px;
+            background: transparent;
+            color: white;
+            border: 1px solid #4ADE80;
+            border-radius: 2px;
+            font-family: 'Pasajero', sans-serif;
+            letter-spacing: 2px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(74, 222, 128, 0.2);
+        }
+
+        .nexus-btn-pro::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: rgba(74, 222, 128, 0.4);
+            transition: left 4s linear;
+            z-index: -1;
+        }
+
+        .nexus-btn-pro.filling::before {
+            left: 0;
+        }
+
+        .nexus-btn-pro.error-state {
+            border-color: #FF4444 !important;
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.5) !important;
+            animation: flicker-red 0.15s infinite;
+        }
+
+        .nexus-btn-pro.error-state::before {
+            background: rgba(255, 68, 68, 0.4) !important;
+            left: -100% !important;
+            transition: left 1.5s cubic-bezier(0.19, 1, 0.22, 1) !important;
+        }
+
+        @keyframes flicker-red {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .nexus-btn-pro:hover {
+            background: transparent;
+            color: white;
+            border-color: white;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
+            transform: translateY(-2px);
+        }
+
+        #loading-text {
+            font-family: 'Pasajero', sans-serif;
+            color: #4ADE80;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            margin-top: 10px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        #loading-text.visible {
+            opacity: 1;
+        }
+
+        /* Full page preloader */
+        #system-preloader {
+            position: fixed;
+            inset: 0;
+            background: transparent;
+            z-index: 10000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            pointer-events: none;
+        }
+
+        .preloader-circle {
+            display: none;
+        }
+
+        .init-bar-container {
+            width: 200px;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 1px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .init-bar-fill {
+            width: 0%;
+            height: 100%;
+            background: #4ADE80;
+            box-shadow: 0 0 10px #4ADE80;
+            transition: width 0.5s linear;
+        }
+
+        .init-text {
+            font-family: 'Pasajero', sans-serif;
+            color: white;
+            font-size: 1rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .init-text.visible {
+            opacity: 1;
+        }
+
+        .nexus-btn-pro:active {
+            transform: translateY(1px);
+        }
+
+        .login-content {
+            opacity: 0;
+            transition: opacity 1s ease 1s;
+            width: 80%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .login-content.active {
+            opacity: 1;
+        }
+
+        .user-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: white;
+            margin-bottom: 10px;
+        }
+
+        .user-card.corrupt {
+            border: 1px solid #FF4444;
+            animation: glitch-border 0.2s infinite;
+            position: relative;
+        }
+
+        .user-card.corrupt span {
+            color: white;
+            text-shadow: none;
+        }
+
+        @keyframes glitch-border {
+            0% { border-color: #FF4444; box-shadow: 0 0 5px #FF4444; }
+            50% { border-color: transparent; box-shadow: 0 0 15px #FF4444; }
+            100% { border-color: #FF4444; box-shadow: 0 0 5px #FF4444; }
+        }
+
+        .delete-corrupt-btn {
+            background: #FF4444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            margin-left: auto;
+            font-family: 'Pasajero', sans-serif;
+            letter-spacing: 1px;
+            z-index: 100;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--accent-orange);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            background-size: cover;
+            background-position: center;
+        }
+
+        #setup-form, #password-modal {
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+        }
+
+        /* --- TRANSITION OVERLAY --- */
+        #transition-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9999;
+            transition: opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: block !important;
+        }
+        #transition-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        /* --- SLEEK INPUTS & GLASSY DROPDOWN --- */
+        input[type="text"], input[type="password"], select.nexus-input {
+            background: rgba(255, 255, 255, 0.03) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 2px !important;
+            padding: 14px;
+            color: white !important;
+            box-sizing: border-box;
+            text-align: center;
+            font-family: 'Bourgeois', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        @keyframes shake-red {
+            0%, 100% { transform: translateX(0); border-color: rgba(255, 255, 255, 0.1); }
+            10%, 30%, 50%, 70%, 90% { border-color: #FF4444; box-shadow: 0 0 20px rgba(255, 68, 68, 0.7); background: rgba(255, 68, 68, 0.1) !important; }
+            25%, 75% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+        }
+
+        .input-error-shake {
+            animation: shake-red 0.4s ease-in-out 3;
+            border-color: #FF4444 !important;
+        }
+
+        input[type="text"]:focus, input[type="password"]:focus {
+            outline: none;
+            border-color: var(--accent-orange);
+            background: rgba(255, 255, 255, 0.03) !important;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        /* Prevent background change on autofill */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active {
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: white !important;
+            transition: background-color 5000s ease-in-out 0s;
+            box-shadow: inset 0 0 0 1000px rgba(255, 255, 255, 0.03) !important;
+        }
+
+        select.nexus-input {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 2px !important;
+            padding: 14px;
+            color: white;
+            width: 100%;
+            text-align: center;
+            appearance: none;
+            cursor: pointer;
+            font-family: 'Bourgeois', sans-serif;
+            transition: all 0.3s ease;
+
+            /* Custom Arrow */
+            background-image: linear-gradient(45deg, transparent 50%, var(--accent-orange) 50%),
+                              linear-gradient(135deg, var(--accent-orange) 50%, transparent 50%);
+            background-position: calc(100% - 20px) calc(1em + 2px),
+                                 calc(100% - 15px) calc(1em + 2px);
+            background-size: 5px 5px,
+                             5px 5px;
+            background-repeat: no-repeat;
+        }
+
+        select.nexus-input:focus {
+            outline: none;
+            border-color: var(--accent-orange);
+            background-color: rgba(255, 255, 255, 0.03) !important;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        select.nexus-input option {
+            background: #0F0F11;
+            color: white;
+            padding: 10px;
+        }
+
+        /* --- NOTIFICATION STACKING --- */
+        #nexus-notice-container {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            pointer-events: none;
+            perspective: 1000px;
+        }
+
+        /* --- NETFLIX STYLE NOTICE --- */
+        .nexus-notice {
+            position: relative;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(25px) saturate(180%);
+            -webkit-backdrop-filter: blur(25px) saturate(180%);
+            padding: 12px 25px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            width: fit-content;
+            min-width: 300px;
+            z-index: 10001;
+
+            /* Sharp Glass Aesthetic */
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); /* Sharp edges */
+
+            /* Smooth Entrance/Exit with Stacking Support */
+            transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1),
+                        opacity 0.6s ease,
+                        margin-top 0.6s cubic-bezier(0.19, 1, 0.22, 1),
+                        max-height 0.6s ease;
+            opacity: 0;
+            transform: translateX(-100%) scale(0.9);
+            pointer-events: all;
+            max-height: 0;
+            margin-top: -15px;
+            overflow: hidden;
+        }
+
+        .nexus-notice.active {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+            max-height: 200px;
+            margin-top: 0;
+        }
+
+        .nexus-notice.leaving {
+            opacity: 0;
+            transform: translateX(-120%) scale(0.8);
+            max-height: 0;
+            margin-top: -15px;
+            pointer-events: none;
+        }
+
+        /* Shining corners */
+        .nexus-notice::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border: 1px solid transparent;
+            /* Ultra-thin natural reflection/shine */
+            background: linear-gradient(135deg,
+                transparent 0%,
+                transparent 40%,
+                rgba(255, 255, 255, 0.4) 50%,
+                transparent 60%,
+                transparent 100%);
+            background-size: 300% 300%;
+            background-position: 100% 100%;
+            animation: slowReflection 8s infinite linear;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        @keyframes slowReflection {
+            0% { background-position: 200% 200%; }
+            100% { background-position: -200% -200%; }
+        }
+
+        .notice-bar {
+            width: 4px;
+            height: 40px;
+            background: var(--accent-orange);
+            border-radius: 2px;
+            box-shadow: 0 0 15px var(--accent-glow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .notice-text {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* The "Netflix Style" in-place slide animation */
+        .notice-bar::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            opacity: 0.3;
+            box-shadow: 0 0 10px white;
+            animation: barSlideUp 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes barSlideUp {
+            0% { top: 100%; opacity: 0; }
+            50% { opacity: 0.6; }
+            100% { top: -100%; opacity: 0; }
+        }
+
+        #modal-username {
+            font-size: 1.5rem;
+            color: var(--accent-orange);
+            font-family: 'Pasajero';
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="transition-overlay"></div>
+    <div id="system-preloader">
+        <div class="init-text" id="preloader-status">INITIALIZING USER PROFILE...</div>
+        <div class="init-bar-container">
+            <div class="init-bar-fill" id="init-bar"></div>
+        </div>
+    </div>
+    <div id="nexus-notice-container"></div>
+    <div class="startup-background" id="bg"></div>
+    
+    <div class="login-overlay" id="overlay">
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <div class="welcome-text" id="welcome">Welcome to IMCA NEXUS EXPERIENCE</div>
+            <button class="begin-btn" id="beginBtn">BEGIN</button>
+        </div>
+    </div>
+
+    <div class="glass-login-panel" id="panel">
+        <div class="login-content" id="loginContent">
+            <h2 id="panelTitle" style="color: white; font-family: 'Pasajero'; letter-spacing: 2px;">AUTHENTICATION</h2>
+
+            <div id="userList">
+                {% for user in users %}
+                <div class="user-card {% if user.corrupt %}corrupt{% endif %}" onclick="{% if user.corrupt %}event.stopPropagation();{% else %}loginAs('{{ user.name }}'){% endif %}">
+                    {% if user.profile_pic %}
+                        <div class="user-avatar" style="background-image: url('{{ user.profile_pic }}');"></div>
+                    {% else %}
+                        <div class="user-avatar">{{ user.name[0].upper() if user.name else '?' }}</div>
+                    {% endif %}
+                    <span>{{ user.name or 'CORRUPT_DATA' }}</span>
+                    {% if user.corrupt %}
+                        <i class="fa-solid fa-triangle-exclamation" style="color: #FF4444; font-size: 0.8rem; margin-left: 5px;"></i>
+                        <button class="delete-corrupt-btn" onclick="event.stopPropagation(); showRestoration('{{ user.id }}', '{{ user.name }}')">TAKE ACTION</button>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Password Modal -->
+            <div id="password-modal">
+                <!-- Restoration Modal (Corrupt Users) -->
+                <div id="restoration-form" style="display: none; width: 100%; flex-direction: column; gap: 15px; align-items: center;">
+                    <div id="restoration-username" style="font-size: 1.2rem; color: #FF4444; font-family: 'Pasajero'; letter-spacing: 2px;"></div>
+                    <p style="color: var(--text-muted); font-size: 0.8rem; text-align: center; margin: 0;">INTEGRITY BREACH DETECTED. SET NEW ACCESS KEY TO RESTORE IDENTITY.</p>
+                    <div style="width: 100%; position: relative;">
+                        <input type="password" id="restorationPassword" placeholder="New Access Key" style="width: 100%;">
+                        <i class="fa-solid fa-eye" onclick="toggleVisibility('restorationPassword')" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: rgba(255,255,255,0.3); font-size: 0.9rem;"></i>
+                    </div>
+                    <button id="restore-btn" class="nexus-btn-pro" onclick="submitRestoration()" style="width: 100%; margin-top: 15px; padding: 14px; border-color: #4ADE80; color: #4ADE80;">INITIALIZE RESTORATION</button>
+                    <button id="purge-btn" class="nexus-btn-pro" onclick="handlePurgeClick()" style="width: 100%; margin-top: 5px; padding: 14px; border-color: #ff4444; color: #ff4444; transition: all 0.4s ease;">TERMINATE & PURGE IDENTITY</button>
+                    <button onclick="hideRestorationModal()" style="background: transparent; color: rgba(255,255,255,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 2px; padding: 12px; cursor: pointer; font-size: 0.8rem; width: 100%; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 1px; margin-top: 10px;">CANCEL</button>
+                </div>
+
+                <div id="standard-login-form" style="width: 100%; display: flex; flex-direction: column; gap: 12px; align-items: center;">
+                    <div id="modal-username"></div>
+                    
+                    <div style="width: 100%; position: relative;">
+                        <input type="password" id="loginPassword" placeholder="Enter Access Key" style="width: 100%;">
+                        <i class="fa-solid fa-eye" onclick="toggleVisibility('loginPassword')" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: rgba(255,255,255,0.3); font-size: 0.9rem;"></i>
+                    </div>
+                    
+                    <button id="login-btn" class="nexus-btn-pro" onclick="submitLogin()" style="width: 100%; margin-top: 15px; padding: 14px;">AUTHENTICATE</button>
+                    <button onclick="hidePasswordModal()" style="background: transparent; color: rgba(255,255,255,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 2px; padding: 12px; cursor: pointer; font-size: 0.8rem; width: 100%; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 1px;">
+                        <i class="fa-solid fa-arrow-left"></i> CANCEL
+                    </button>
+                </div>
+            </div>
+
+            <div id="setup-form">
+                <div style="width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; min-height: 450px;">
+                    <div id="avatar-preview" onclick="document.getElementById('avatar-input').click()" style="width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); overflow: hidden; position: relative; box-shadow: 0 0 20px rgba(255,255,255,0.05);">
+                        <i class="fa-solid fa-camera" style="font-size: 2rem; color: rgba(255,255,255,0.3);"></i>
+                        <img id="avatar-img" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                    </div>
+                    <input type="file" id="avatar-input" accept="image/*" style="display: none;" onchange="previewAvatar(this)">
+
+                    <div style="width: 100%; display: flex; flex-direction: column; gap: 12px; align-items: center;">
+                        <input type="text" id="newUsername" placeholder="Legal Name" style="width: 100%;">
+                        <div style="display: flex; gap: 5px; align-items: center; width: 100%;">
+                            <input type="text" id="socialUser" placeholder="Social Username" style="flex: 1; text-align: left;" oninput="this.value = this.value.replace(/[^a-zA-Z]/g, '')">
+                            <span style="color: var(--accent-orange); font-family: 'Pasajero'; font-size: 1.2rem;">#</span>
+                            <input type="text" id="socialNum" placeholder="0000" maxlength="4" style="width: 70px; text-align: center;" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                        </div>
+
+                        <div style="width: 100%; position: relative;">
+                            <input type="password" id="newPassword" placeholder="Password" style="width: 100%;">
+                            <i class="fa-solid fa-eye" onclick="toggleVisibility('newPassword')" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: rgba(255,255,255,0.3); font-size: 0.9rem;"></i>
+                        </div>
+
+                        <div style="width: 100%; position: relative;">
+                            <input type="password" id="confirmPassword" placeholder="Confirm Password" style="width: 100%;">
+                            <i class="fa-solid fa-eye" onclick="toggleVisibility('confirmPassword')" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: rgba(255,255,255,0.3); font-size: 0.9rem;"></i>
+                        </div>
+
+                        <select id="securityQuestion" class="nexus-input">
+                            <option value="" disabled selected>Select Security Question</option>
+                            <option value="pet">What was the name of your first pet?</option>
+                            <option value="school">What elementary school did you attend?</option>
+                            <option value="city">In what city were you born?</option>
+                            <option value="mother">What is your mother's maiden name?</option>
+                            <option value="car">What was the make of your first car?</option>
+                        </select>
+
+                        <input type="text" id="securityAnswer" placeholder="Security Answer" style="width: 100%;">
+
+                        <p id="password-hint" style="color: #FF4444; font-size: 0.75rem; margin: 0; font-family: 'Bourgeois', sans-serif; letter-spacing: 1px; opacity: 0.8; line-height: 1.4; display: none;">
+                            REQUIREMENT: MIN 12 CHARS • 1 CAPITAL LETTER
+                        </p>
+                    </div>
+
+                    <button class="nexus-btn-pro" id="creation-btn" onclick="createUser()" style="width: 100%; margin-top: 15px; padding: 14px;">PROCEED TO CREATION</button>
+                    <div id="loading-text">INITIALIZING USER PROFILE...</div>
+                    <button onclick="hideSetup()" style="background: transparent; color: rgba(255,255,255,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 2px; padding: 12px; cursor: pointer; font-size: 0.8rem; width: 100%; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 1px;">
+                        <i class="fa-solid fa-arrow-left"></i> GO BACK
+                    </button>
+                </div>
+            </div>
+
+            <button id="add-user-btn" onclick="showSetup()" style="background: transparent; color: var(--accent-orange); border: none; margin-top: 20px; cursor: pointer; font-size: 0.9rem; display: none;">
+                <i class="fa-solid fa-plus"></i> NEW USER
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- THEME & WALLPAPER SYSTEM ---
+        window.showNotice = function(title, status, duration = 3000, showBlur = true, isError = false) {
+            const container = document.getElementById('nexus-notice-container');
+            const overlay = document.getElementById('transition-overlay'); // Use the existing overlay
+
+            // Create unique notice element
+            const notice = document.createElement('div');
+            notice.className = 'nexus-notice';
+
+            const barColor = isError ? '#ff4444' : 'var(--accent-orange)';
+            const barShadow = isError ? '0 0 15px rgba(255, 68, 68, 0.5)' : '0 0 15px var(--accent-glow)';
+
+            notice.innerHTML = `
+                <div class="notice-bar" style="background: ${barColor}; box-shadow: ${barShadow};"></div>
+                <div class="notice-text">
+                    <div style="font-family: var(--font-title); color: white; font-size: 1.1rem; letter-spacing: 1px; line-height: 1.2;">${title}</div>
+                    <div style="font-family: var(--font-body); color: white; font-size: 0.85rem; opacity: 0.9; letter-spacing: 0.5px;">${status}</div>
+                </div>
+            `;
+
+            container.appendChild(notice);
+
+            // Trigger entrance
+            requestAnimationFrame(() => {
+                notice.classList.add('active');
+            });
+
+            // Set removal timer
+            setTimeout(() => {
+                notice.classList.add('leaving');
+
+                // After exit animation, check if we should remove overlay
+                setTimeout(() => {
+                    notice.remove();
+                }, 600);
+            }, duration);
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const bg = document.getElementById('bg');
+            const welcome = document.getElementById('welcome');
+            const panel = document.getElementById('panel');
+            const loginContent = document.getElementById('loginContent');
+            const beginBtn = document.getElementById('beginBtn');
+            const userList = document.getElementById('userList');
+            const addUserBtn = document.getElementById('add-user-btn');
+
+            // Check if users exist (rendered by Jinja)
+            const hasUsers = {{ 'true' if users|length > 0 else 'false' }};
+
+            if (hasUsers) {
+                // Skip intro
+                bg.classList.add('active');
+                welcome.style.display = 'none';
+                beginBtn.style.display = 'none';
+                panel.classList.add('active');
+                loginContent.classList.add('active');
+                addUserBtn.style.display = 'block';
+            } else {
+                // Play full intro
+                setTimeout(() => bg.classList.add('active'), 500);
+                setTimeout(() => {
+                    welcome.classList.add('active');
+                    setTimeout(() => {
+                        beginBtn.classList.add('visible');
+                    }, 2000);
+                }, 2000);
+            }
+
+            beginBtn.addEventListener('click', () => {
+                welcome.classList.add('fade-out');
+                beginBtn.classList.add('fade-out');
+                
+                setTimeout(() => {
+                    welcome.style.display = 'none';
+                    beginBtn.style.display = 'none';
+                    panel.classList.add('active');
+                    loginContent.classList.add('active');
+                    
+                    if (userList.children.length === 0) {
+                        showSetup();
+                    } else {
+                        addUserBtn.style.display = 'block';
+                    }
+                }, 1500);
+            });
+        });
+
+        function showSetup() {
+            document.getElementById('panelTitle').innerText = 'IDENTITY INITIALIZATION';
+            document.getElementById('userList').style.display = 'none';
+            document.getElementById('add-user-btn').style.display = 'none';
+            document.getElementById('password-modal').style.display = 'none';
+            document.getElementById('setup-form').style.display = 'flex';
+        }
+
+        function hideSetup() {
+            const userList = document.getElementById('userList');
+            const setupForm = document.getElementById('setup-form');
+            const addUserBtn = document.getElementById('add-user-btn');
+            const panelTitle = document.getElementById('panelTitle');
+            const welcome = document.getElementById('welcome');
+            const beginBtn = document.getElementById('beginBtn');
+            const panel = document.getElementById('panel');
+            const usersExist = userList.querySelectorAll('.user-card').length > 0;
+
+            if (usersExist) {
+                setupForm.style.display = 'none';
+                userList.style.display = 'block'; // Corrected from 'flex'
+                addUserBtn.style.display = 'block';
+                panelTitle.textContent = 'AUTHENTICATION';
+            } else {
+                // Return to welcome screen without refresh
+                panel.classList.remove('active');
+                setTimeout(() => {
+                    welcome.style.display = 'block';
+                    beginBtn.style.display = 'block';
+                    setTimeout(() => {
+                        welcome.classList.remove('fade-out');
+                        beginBtn.classList.remove('fade-out');
+                    }, 50);
+                }, 1000);
+            }
+        }
+
+    window.showNotice = function(title, status, duration = 3000, showBlur = true, isError = false) {
+        const container = document.getElementById('nexus-notice-container');
+        if (!container) return;
+        
+        const notice = document.createElement('div');
+        notice.className = 'nexus-notice';
+        
+        const barColor = isError ? '#ff4444' : 'var(--accent-orange)';
+        const barShadow = isError ? '0 0 15px rgba(255, 68, 68, 0.5)' : '0 0 15px var(--accent-glow)';
+        
+        notice.innerHTML = `
+            <div class="notice-bar" style="background: ${barColor}; box-shadow: ${barShadow};"></div>
+            <div class="notice-text">
+                <div style="font-family: var(--font-title); color: white; font-size: 1.1rem; letter-spacing: 1px; line-height: 1.2;">${title}</div>
+                <div style="font-family: var(--font-body); color: white; font-size: 0.85rem; opacity: 0.9; letter-spacing: 0.5px;">${status}</div>
+            </div>
+        `;
+
+        container.appendChild(notice);
+        
+        requestAnimationFrame(() => {
+            notice.classList.add('active');
+        });
+
+        setTimeout(() => {
+            notice.classList.add('leaving');
+            setTimeout(() => {
+                notice.remove();
+            }, 600);
+        }, duration);
+    };
+
+    function showNotice(title, status, duration = 3000, showBlur = true, isError = false) {
+        window.showNotice(title, status, duration, showBlur, isError);
+    }
+
+    function triggerTransition(targetUrl) {
+            const overlay = document.getElementById('transition-overlay');
+            overlay.classList.add('active');
+            setTimeout(() => {
+                window.location.href = targetUrl;
+            }, 1200); // Match CSS transition time
+        }
+
+        let currentLoginUser = "";
+
+        function loginAs(username) {
+            currentLoginUser = username;
+            document.getElementById('userList').style.display = 'none';
+            document.getElementById('add-user-btn').style.display = 'none';
+            document.getElementById('setup-form').style.display = 'none';
+            document.getElementById('password-modal').style.display = 'flex';
+            document.getElementById('modal-username').innerText = username;
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('loginPassword').focus();
+        }
+
+        let currentCorruptId = "";
+        let currentRestorationId = "";
+        let purgeConfirmState = false;
+
+        function showRestoration(userId, username) {
+            currentCorruptId = userId;
+            currentRestorationId = userId;
+            purgeConfirmState = false;
+            const purgeBtn = document.getElementById('purge-btn');
+            if (purgeBtn) {
+                purgeBtn.innerText = "TERMINATE & PURGE IDENTITY";
+                purgeBtn.style.background = "transparent";
+                purgeBtn.style.opacity = '1';
+            }
+            document.getElementById('userList').style.display = 'none';
+            document.getElementById('add-user-btn').style.display = 'none';
+            document.getElementById('password-modal').style.display = 'flex';
+            document.getElementById('standard-login-form').style.display = 'none';
+            document.getElementById('restoration-form').style.display = 'flex';
+            document.getElementById('restoration-username').innerText = username || "CORRUPT IDENTITY";
+            document.getElementById('panelTitle').innerText = 'IDENTITY REPAIR';
+        }
+
+        function handlePurgeClick() {
+            if (!currentRestorationId) {
+                console.error("Purge aborted: ID missing");
+                return;
+            }
+            const btn = document.getElementById('purge-btn');
+            const passInput = document.getElementById('restorationPassword');
+            const password = passInput ? passInput.value : '';
+
+            if (!purgeConfirmState) {
+                if (!password) {
+                    if (window.showNotice) window.showNotice('SECURITY PROTOCOL', 'ENTER ACCESS KEY TO AUTHORIZE PURGE', 3000, false, true);
+                    else alert('ENTER ACCESS KEY TO AUTHORIZE PURGE');
+                    if (passInput) {
+                        passInput.classList.add('flash-red');
+                        setTimeout(() => passInput.classList.remove('flash-red'), 500);
+                    }
+                    return;
+                }
+                purgeConfirmState = true;
+                btn.style.opacity = '0';
+                setTimeout(() => {
+                    btn.innerText = "CONFIRM PURGE?";
+                    btn.style.background = "rgba(255, 68, 68, 0.2)";
+                    btn.style.opacity = '1';
+                }, 400);
+            } else {
+                // Ensure we use the exact ID and handle potential errors
+                const userId = currentRestorationId;
+                btn.innerText = "PURGING...";
+                btn.disabled = true;
+
+                fetch('/api/purge_corrupt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, password: password })
+                }).then(async r => {
+                    let data;
+                    const text = await r.text();
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        console.error("Server returned non-JSON:", text);
+                        window.showNotice('SYSTEM ERROR', 'Purge failed: Invalid server response [NX-700].', 5000, false, true);
+                        btn.disabled = false;
+                        resetPurgeButton();
+                        return;
+                    }
+                    
+                    if (r.ok && data.status === 'success') {
+                        window.showNotice('IDENTITY TERMINATED', 'System purged successfully.', 3000, true);
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        const errorCode = data.code || 'UNKNOWN';
+                        window.showNotice('PURGE FAILED', `Protocol Error [${errorCode}]: ${data.message || 'Neutralization failed.'}`, 5000, false, true);
+                        btn.disabled = false;
+                        resetPurgeButton();
+                    }
+                }).catch(err => {
+                    console.error("Purge Error:", err);
+                    window.showNotice('SYSTEM ERROR', 'Critical failure during purge protocol.', 5000, false, true);
+                    btn.disabled = false;
+                    resetPurgeButton();
+                });
+            }
+        }
+
+        function resetPurgeButton() {
+            purgeConfirmState = false;
+            const btn = document.getElementById('purge-btn');
+            if (btn) {
+                btn.innerText = "TERMINATE & PURGE IDENTITY";
+                btn.style.background = "transparent";
+                btn.style.opacity = '1';
+            }
+        }
+
+        function hideRestorationModal() {
+            resetPurgeButton();
+            document.getElementById('restoration-form').style.display = 'none';
+            document.getElementById('standard-login-form').style.display = 'flex';
+            hidePasswordModal();
+        }
+
+        function submitRestoration() {
+            const newPassword = document.getElementById('restorationPassword').value;
+            const btn = document.querySelector('#restoration-form .nexus-btn-pro');
+            
+            if (!newPassword || newPassword.length < 12) {
+                if (btn) {
+                    btn.classList.add('error-state');
+                    window.showNotice('INTEGRITY ERROR', 'Min 12 chars required for restoration.', 3000, false, true);
+                    setTimeout(() => btn.classList.remove('error-state'), 1500);
+                } else {
+                    window.showNotice('INTEGRITY ERROR', 'Min 12 chars required for restoration.', 3000, false, true);
+                }
+                return;
+            }
+
+            if (btn) {
+                btn.classList.add('filling');
+                btn.disabled = true;
+            }
+
+            fetch('/api/restore_corrupt', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({user_id: currentCorruptId, new_password: newPassword})
+            }).then(r => r.json()).then(data => {
+                if (data.status === 'success') {
+                    window.showNotice('REPAIR SUCCESSFUL', 'Identity integrity restored.', 3000, true);
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    if (btn) {
+                        btn.classList.remove('filling');
+                        btn.classList.add('error-state');
+                        window.showNotice('REPAIR FAILED', data.message, 3000, false, true);
+                        setTimeout(() => {
+                            btn.classList.remove('error-state');
+                            btn.disabled = false;
+                        }, 1500);
+                    } else {
+                        window.showNotice('REPAIR FAILED', data.message, 3000, false, true);
+                    }
+                }
+            }).catch(err => {
+                if (btn) {
+                    btn.classList.remove('filling');
+                    btn.classList.add('error-state');
+                    window.showNotice('CONNECTION ERROR', 'Nexus link severed.', 3000, false, true);
+                    setTimeout(() => {
+                        btn.classList.remove('error-state');
+                        btn.disabled = false;
+                    }, 1500);
+                }
+            });
+        }
+
+        function deleteCorrupt(userId) {
+            if (confirm('Initiate emergency purge of corrupt identity?')) {
+                fetch('/api/purge_corrupt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                }).then(r => r.json()).then(data => {
+                    if (data.status === 'success') {
+                        window.showNotice('PURGE COMPLETE', 'Corrupt data neutralized.', 3000, true);
+                        setTimeout(() => window.location.reload(), 1000);
+                    }
+                });
+            }
+        }
+
+        function hidePasswordModal() {
+            document.getElementById('password-modal').style.display = 'none';
+            document.getElementById('userList').style.display = 'block'; // Corrected from 'flex'
+            document.getElementById('add-user-btn').style.display = 'block';
+            currentLoginUser = "";
+        }
+
+        function handleError(btnId, title, msg) {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+            btn.classList.remove('filling');
+            btn.classList.add('error-state');
+            window.showNotice(title, msg, 4000, false, true);
+            
+            setTimeout(() => {
+                btn.classList.remove('error-state');
+                btn.disabled = false;
+                const loadingText = document.getElementById('loading-text');
+                if (loadingText) loadingText.classList.remove('visible');
+            }, 1500);
+        }
+
+        function submitLogin() {
+            const password = document.getElementById('loginPassword').value;
+            if (!password) return;
+            
+            const btn = document.getElementById('login-btn');
+            if (btn) {
+                btn.classList.add('filling');
+                btn.disabled = true;
+            }
+
+            fetch('/api/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: currentLoginUser, password})
+            }).then(r => r.json()).then(data => {
+                if (data.status === 'success') {
+                    triggerTransition('/');
+                } else {
+                    handleError('login-btn', 'ACCESS DENIED', 'Authentication failed.');
+                }
+            }).catch(err => {
+                handleError('login-btn', 'CONNECTION ERROR', 'Nexus link severed.');
+            });
+        }
+
+        // Allow Enter key to submit login
+        document.getElementById('loginPassword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                submitLogin();
+            }
+        });
+
+        let selectedAvatar = "";
+
+        function previewAvatar(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('avatar-img').src = e.target.result;
+                    document.getElementById('avatar-img').style.display = 'block';
+                    document.querySelector('#avatar-preview i').style.display = 'none';
+                    selectedAvatar = e.target.result;
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function createUser() {
+            const username = document.getElementById('newUsername').value;
+            const social_user = document.getElementById('socialUser').value;
+            const social_num = document.getElementById('socialNum').value;
+            const password = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const securityQuestion = document.getElementById('securityQuestion').value;
+            const securityAnswer = document.getElementById('securityAnswer').value;
+            const hint = document.getElementById('password-hint');
+            
+            if (!username || !social_user || !social_num || !password || !confirmPassword || !securityQuestion || !securityAnswer) {
+                handleError('creation-btn', 'SYSTEM ALERT', 'All fields are required for core integration.');
+                return;
+            }
+
+            if (password.length < 12 || !/[A-Z]/.test(password)) {
+                hint.style.display = 'block';
+                handleError('creation-btn', 'INTEGRITY ERROR', 'Password does not meet security requirements.');
+                return;
+            } else {
+                hint.style.display = 'none';
+            }
+
+            if (password !== confirmPassword) {
+                handleError('creation-btn', 'INTEGRITY ERROR', 'Passwords do not match.');
+                return;
+            }
+
+            const btn = document.getElementById('creation-btn');
+            const loadingText = document.getElementById('loading-text');
+            const preloader = document.getElementById('system-preloader');
+            const preloaderStatus = document.getElementById('preloader-status');
+
+            // 1. Start button fill animation
+            btn.classList.add('filling');
+            btn.disabled = true;
+            loadingText.classList.add('visible');
+
+            // Sequential Loading Messages
+            const sequence = async () => {
+                const steps = [
+                    "ALLOCATING SECURE STORAGE...",
+                    "CONFIGURING ENVIRONMENT...",
+                    "INITIALIZING USER PROFILE...",
+                    "PRELOADING SYSTEM ASSETS..."
+                ];
+
+                for (let i = 0; i < steps.length; i++) {
+                    loadingText.innerText = steps[i];
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+
+                try {
+                    const response = await fetch('/api/users', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            username, 
+                            social_user: social_user,
+                            social_num: social_num,
+                            password,
+                            confirm_password: confirmPassword,
+                            avatar: selectedAvatar,
+                            security_question: securityQuestion,
+                            security_answer: securityAnswer
+                        })
+                    });
+                    
+                    const data = await response.json();
+
+                    if (data.status === 'success') {
+                        // Show overlay and titles
+                        preloader.style.display = 'flex';
+                        const bar = document.getElementById('init-bar');
+                        preloaderStatus.classList.add('visible');
+                        
+                        const preloadSteps = [
+                            { text: "DASHBOARD MODULES LOADED", progress: 25 },
+                            { text: "TASK ENGINE READY", progress: 50 },
+                            { text: "FINANCIAL LOGS SYNCHRONIZED", progress: 75 },
+                            { text: "PREPARING INTERFACE...", progress: 100 }
+                        ];
+
+                        for (const step of preloadSteps) {
+                            preloaderStatus.classList.remove('visible');
+                            await new Promise(r => setTimeout(r, 200));
+                            preloaderStatus.innerText = step.text;
+                            preloaderStatus.classList.add('visible');
+                            bar.style.width = step.progress + '%';
+                            await new Promise(r => setTimeout(r, 800));
+                        }
+
+                        // Preload dashboard in background then redirect
+                        window.location.href = '/';
+                    } else {
+                        if (data.message && (data.message.includes('Social tag') || data.message.includes('Social Tag'))) {
+                            const sUser = document.getElementById('socialUser');
+                            const sNum = document.getElementById('socialNum');
+                            if (sUser) sUser.classList.add('input-error-shake');
+                            if (sNum) sNum.classList.add('input-error-shake');
+                            setTimeout(() => {
+                                if (sUser) sUser.classList.remove('input-error-shake');
+                                if (sNum) sNum.classList.remove('input-error-shake');
+                            }, 1500);
+                        }
+                        handleError('creation-btn', 'CREATION FAILED', data.message || 'Identity verification failed.');
+                    }
+                } catch (err) {
+                    handleError('creation-btn', 'ERROR', 'Network Violation Detected');
+                }
+            };
+
+            sequence();
+        }
+
+        function toggleVisibility(id) {
+            const input = document.getElementById(id);
+            const icon = event.target;
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+    </script>
+</body>
+</html>

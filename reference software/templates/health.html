@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .title-underline-wrapper {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        width: fit-content;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .themed-wave-line::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(110deg, transparent 40%, rgba(255,255,255,1) 50%, transparent 60%);
+        animation: wave-slide 12s infinite linear;
+        display: block;
+    }
+
+    .themed-wave-line {
+        width: 100%;
+        height: 4px;
+        background: var(--accent-orange);
+        box-shadow: 0 0 15px var(--accent-glow);
+        margin-top: 3px;
+        position: relative;
+        overflow: hidden;
+        border-radius: 2px;
+    }
+
+    .dev-page-title {
+        font-size: 2.5rem;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        color: rgba(211, 211, 211, 0.65);
+        width: fit-content;
+        position: relative;
+        display: inline-block;
+        font-family: var(--font-title, 'Pasajero', sans-serif);
+    }
+
+    .dev-page-title::after {
+        content: "{{ title }}";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(110deg, transparent 49%, rgba(255, 255, 255, 1) 50%, transparent 51%);
+        background-size: 300% 100%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: shine-text 12s infinite linear;
+        pointer-events: none;
+        mix-blend-mode: plus-lighter;
+    }
+
+    @keyframes shine-text {
+        0% { background-position: 250% 0; }
+        100% { background-position: -150% 0; }
+    }
+
+    @keyframes wave-slide {
+        0% { transform: translateX(-200%); }
+        100% { transform: translateX(200%); }
+    }
+</style>
+
+<div style="height: 100%; display: flex; align-items: center; justify-content: center;">
+
+    <div class="glass-panel" style="text-align: center; padding: 60px; max-width: 500px;">
+
+        <div style="font-size: 3rem; color: var(--accent-orange); margin-bottom: 20px;">
+            <i class="fa-solid fa-screwdriver-wrench"></i>
+        </div>
+
+        <div class="title-underline-wrapper" style="margin-left: auto; margin-right: auto; margin-bottom: 15px;">
+            <h1 class="dev-page-title">
+                {{ title }}
+            </h1>
+            <div class="themed-wave-line"></div>
+        </div>
+
+        <p class="label" style="font-size: 1.2rem !important;">
+            Module Under Development
+        </p>
+
+        <p style="color: var(--text-muted); margin-top: 20px;">
+            This sector of the IMCA Nexus is currently being built.
+            Return to the Dashboard for active operations.
+        </p>
+
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,1225 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .settings-container {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .settings-content-glass {
+        flex: 1;
+        overflow-y: auto;
+        padding: 30px;
+        border-radius: 24px;
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: 1px solid var(--glass-border);
+        box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    }
+
+    .settings-content-glass::-webkit-scrollbar {
+        width: 6px;
+    }
+    .settings-content-glass::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.02);
+    }
+    .settings-content-glass::-webkit-scrollbar-thumb {
+        background: var(--accent-orange);
+        border-radius: 3px;
+    }
+
+    .profile-edit-section {
+        display: flex;
+        gap: 30px;
+        margin-bottom: 40px;
+        padding-bottom: 40px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        align-items: flex-start;
+    }
+
+    .profile-pic-sidebar {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        flex-shrink: 0;
+        padding-top: 15px; /* Aligned with Legal Name label + small offset */
+    }
+
+    .profile-pic-container {
+        position: relative;
+        width: 120px;
+        height: 120px;
+    }
+
+    .profile-pic-large {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid var(--accent-orange);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        color: var(--text-muted);
+        box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .edit-pic-btn {
+        position: absolute;
+        bottom: 5px;
+        right: 5px;
+        width: 35px;
+        height: 35px;
+        background: var(--accent-orange);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: black;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: transform 0.3s ease;
+    }
+
+    .edit-pic-btn:hover {
+        transform: scale(1.1);
+    }
+
+    .profile-inputs {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .nexus-input {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 2px !important; /* Sleek edges */
+        padding: 12px 15px;
+        color: white;
+        font-family: var(--font-body);
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+    }
+
+    .nexus-input:focus {
+        outline: none;
+        border-color: var(--accent-orange);
+        background: rgba(255, 255, 255, 0.05);
+        box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    select.nexus-input {
+        appearance: none;
+        cursor: pointer;
+        /* Custom Arrow */
+        background-image: linear-gradient(45deg, transparent 50%, var(--accent-orange) 50%),
+                          linear-gradient(135deg, var(--accent-orange) 50%, transparent 50%);
+        background-position: calc(100% - 20px) calc(1em + 2px),
+                             calc(100% - 15px) calc(1em + 2px);
+        background-size: 5px 5px,
+                         5px 5px;
+        background-repeat: no-repeat;
+    }
+
+    select.nexus-input option {
+        background: #0F0F11;
+        color: white;
+        padding: 10px;
+    }
+
+    .wallpaper-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    .wallpaper-card {
+        aspect-ratio: 16/9;
+        border-radius: 15px;
+        background-size: cover;
+        background-position: center;
+        position: relative;
+        cursor: pointer;
+        border: 2px solid rgba(255,255,255,0.1);
+        overflow: hidden;
+        transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+        --glow-color: rgba(255,255,255,0.1);
+    }
+
+    .wallpaper-card:hover {
+        transform: scale(1.05) translateY(-5px);
+        border-color: var(--glow-color) !important;
+        box-shadow: 0 0 20px var(--glow-color), 0 15px 30px rgba(0,0,0,0.4) !important;
+    }
+
+    .wallpaper-card.active {
+        border-width: 2px;
+        border-style: solid;
+        border-color: var(--glow-color) !important;
+        box-shadow: 0 0 25px var(--glow-color) !important;
+    }
+
+    .wallpaper-label {
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        color: white;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-family: var(--font-title);
+        opacity: 0.8;
+        transition: opacity 0.3s ease;
+    }
+
+    .wallpaper-card:hover .wallpaper-label {
+        opacity: 1;
+        background: rgba(0,0,0,0.2);
+    }
+
+    .theme-palette {
+        display: flex;
+        height: 6px;
+        margin-top: 10px;
+        border-radius: 3px;
+        overflow: hidden;
+        width: 100%;
+        background: rgba(255,255,255,0.1);
+    }
+
+    .palette-part { flex: 1; }
+
+    .settings-disclaimer {
+        margin-top: 40px;
+        padding: 20px;
+        background: rgba(255,255,255,0.03);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        border: 1px solid rgba(255,255,255,0.05);
+        line-height: 1.6;
+    }
+
+    .save-btn {
+        padding: 12px 35px;
+        background: transparent;
+        color: var(--text-primary);
+        border: 1px solid var(--accent-orange);
+        border-radius: 2px; /* Sleek edges */
+        cursor: pointer;
+        font-family: var(--font-title);
+        font-size: 1rem;
+        transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+        position: relative;
+        overflow: hidden;
+        box-shadow: inset 0 0 0 0 var(--accent-orange);
+    }
+
+    .save-btn:hover {
+        background: var(--accent-orange);
+        color: black;
+        box-shadow: 0 0 20px var(--accent-glow);
+        transform: scale(1.05);
+    }
+
+    .save-btn:active {
+        transform: scale(0.95);
+    }
+
+    .save-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        border-color: rgba(255,255,255,0.2);
+        color: rgba(255,255,255,0.2);
+        box-shadow: none;
+    }
+
+    .locked-section {
+        opacity: 0.5;
+        pointer-events: none;
+        transition: opacity 0.5s ease;
+    }
+    .locked-section.unlocked {
+        opacity: 1;
+        pointer-events: all;
+    }
+    .title-underline-wrapper {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: flex-start;
+        width: fit-content;
+    }
+
+    /* Remove the old overlay that was going "over" the whole box */
+    .title-underline-wrapper::after {
+        display: none;
+    }
+
+    .themed-wave-line {
+        width: 100%;
+        height: 4px;
+        background: var(--accent-orange);
+        box-shadow: 0 0 15px var(--accent-glow);
+        margin-top: 3px;
+        position: relative;
+        overflow: hidden;
+        border-radius: 2px;
+    }
+
+    .themed-wave-line::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(110deg, transparent 40%, rgba(255,255,255,1) 50%, transparent 60%);
+        animation: wave-slide 12s infinite linear;
+        display: block;
+    }
+
+    .settings-title {
+        font-size: 2rem;
+        font-weight: 400;
+        letter-spacing: 1px;
+        color: rgba(211, 211, 211, 0.65);
+        text-transform: uppercase;
+        width: fit-content;
+        position: relative;
+        display: inline-block;
+        margin-bottom: 0;
+    }
+
+    .settings-title::after {
+        content: "SYSTEM SETTINGS";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(110deg, transparent 49%, rgba(255, 255, 255, 1) 50%, transparent 51%);
+        background-size: 300% 100%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: shine-text 12s infinite linear;
+        pointer-events: none;
+        mix-blend-mode: plus-lighter;
+    }
+
+    /* Remove the old manual glow class */
+    .settings-title-glow {
+        display: none;
+    }
+
+    @keyframes shine-text {
+        0% { background-position: 250% 0; }
+        100% { background-position: -150% 0; }
+    }
+
+    @keyframes wave-slide {
+        0% { transform: translateX(-200%); }
+        100% { transform: translateX(200%); }
+    }
+
+    .shake-error {
+        animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+    }
+
+    @keyframes shake {
+        10%, 90% { transform: translate3d(-1px, 0, 0); }
+        20%, 80% { transform: translate3d(2px, 0, 0); }
+        30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+        40%, 60% { transform: translate3d(4px, 0, 0); }
+    }
+
+    .nexus-input.flash-red {
+        border-color: #ff4444 !important;
+        box-shadow: 0 0 15px rgba(255, 68, 68, 0.5) !important;
+    }
+
+    .error-toast {
+        position: absolute;
+        background: rgba(255, 68, 68, 0.95);
+        color: white;
+        padding: 8px 15px;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-family: var(--font-title);
+        pointer-events: none;
+        z-index: 100;
+        animation: fadeInOut 2s ease forwards;
+        width: max-content;
+        max-width: 280px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    @keyframes fadeInOut {
+        0% { opacity: 0; transform: translateY(10px); }
+        15% { opacity: 1; transform: translateY(0); }
+        85% { opacity: 1; transform: translateY(0); }
+        100% { opacity: 0; transform: translateY(-10px); }
+    }
+</style>
+
+<script>
+function handleSocialTagClick(event) {
+    const container = event.currentTarget;
+    const inputs = container.querySelectorAll('.nexus-input');
+    
+    // Add shake class
+    container.classList.add('shake-error');
+    inputs.forEach(input => input.classList.add('flash-red'));
+    
+    // Create and show toast
+    const existingToast = container.querySelector('.error-toast');
+    if (existingToast) existingToast.remove();
+
+    const toast = document.createElement('div');
+    toast.className = 'error-toast';
+    toast.style.display = 'flex';
+    toast.style.flexDirection = 'column';
+    toast.style.alignItems = 'center';
+    toast.style.textAlign = 'center';
+    toast.innerHTML = `
+        <div style="font-weight: bold;">TAGS CANNOT BE CHANGED</div>
+        <div style="font-size: 0.65rem; margin-top: 5px; opacity: 0.9; font-family: var(--font-body); letter-spacing: 0.5px; text-transform: none;">To change your tag please contact your system administrator.</div>
+    `;
+    
+    // Position toast
+    toast.style.left = '50%';
+    toast.style.transform = 'translateX(-50%)';
+    toast.style.top = '100%';
+    toast.style.marginTop = '10px';
+    
+    container.style.position = 'relative';
+    container.appendChild(toast);
+    
+    // Cleanup
+    setTimeout(() => {
+        container.classList.remove('shake-error');
+        inputs.forEach(input => input.classList.remove('flash-red'));
+    }, 500);
+    
+    setTimeout(() => {
+        if (toast.parentNode === container) {
+            toast.remove();
+        }
+    }, 2000);
+}
+</script>
+
+<div style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: baseline; padding-right: 0px;">
+    <div class="title-underline-wrapper">
+        <h1 class="settings-title">SYSTEM SETTINGS</h1>
+        <div class="themed-wave-line"></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 15px; justify-content: flex-end;">
+    </div>
+</div>
+
+<div class="settings-content-glass">
+        <!-- Profile Edit Section -->
+        <div class="profile-edit-section">
+            <div class="profile-pic-sidebar">
+                <div class="profile-pic-container">
+                    <div class="profile-pic-large" id="profile-preview">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <label for="pic-upload" class="edit-pic-btn">
+                        <i class="fa-solid fa-camera"></i>
+                    </label>
+                    <input type="file" id="pic-upload" hidden accept="image/*">
+                </div>
+                <button id="remove-pic-btn" onclick="removeProfilePic()" class="save-btn" style="border-color: #ff4444; color: #ff4444; font-size: 0.8rem; padding: 5px 15px; width: fit-content; transition: all 0.3s ease;">
+                    REMOVE PICTURE
+                </button>
+            </div>
+            
+            <div class="profile-inputs">
+                <div class="input-group" style="grid-column: span 2;">
+                    <label class="label">Legal Name</label>
+                    <input type="text" class="nexus-input" id="edit-name" placeholder="Enter Name">
+                </div>
+                <div class="input-group" style="grid-column: span 1;">
+                    <label class="label">Social Tag</label>
+                    <div style="display: flex; gap: 5px; align-items: center; cursor: not-allowed;" onclick="handleSocialTagClick(event)">
+                        <input type="text" class="nexus-input" id="edit-social-user" placeholder="Username" style="flex: 1; pointer-events: none;" value="{{ user.social_tag.split('#')[0] if user.social_tag and '#' in user.social_tag else '' }}" readonly>
+                        <span style="color: var(--accent-orange); font-family: var(--font-title); font-size: 1.2rem;">#</span>
+                        <input type="text" class="nexus-input" id="edit-social-num" placeholder="0000" maxlength="4" style="width: 70px; text-align: center; pointer-events: none;" value="{{ user.social_tag.split('#')[1] if user.social_tag and '#' in user.social_tag else '' }}" readonly>
+                    </div>
+                </div>
+                <div class="input-group" style="grid-column: span 1;">
+                    <label class="label">Designation</label>
+                    <input type="text" class="nexus-input" id="edit-role" placeholder="Enter Role">
+                </div>
+                <div class="input-group">
+                    <label class="label">Organization / Company</label>
+                    <input type="text" class="nexus-input" id="edit-company" placeholder="Enter Company">
+                </div>
+                <div class="input-group">
+                    <label class="label">Email Address</label>
+                    <input type="email" class="nexus-input" id="edit-email" placeholder="Enter Email">
+                </div>
+                <div style="grid-column: span 2; display: flex; justify-content: flex-end; margin-top: 10px; padding-bottom: 20px;">
+                    <button id="save-profile-btn" onclick="saveProfile()" class="save-btn">
+                        SAVE PROFILE
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Cloud Relay Infrastructure -->
+        <div style="margin-bottom: 40px; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.05);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                <h3 style="margin: 0;">Cloud Relay Infrastructure</h3>
+                <div id="settings-relay-indicator" style="display: flex; align-items: center; gap: 10px;">
+                    <div style="font-family: var(--font-title); font-size: 0.7rem; letter-spacing: 1px; color: var(--text-muted);">RELAY STATUS</div>
+                    <div style="width: 1px; height: 15px; background: rgba(255,255,255,0.1);"></div>
+                    <div id="settings-relay-status" style="font-family: var(--font-title); font-size: 0.7rem; letter-spacing: 1px; color: #ff4444;">OFFLINE</div>
+                </div>
+            </div>
+            <div class="glass-panel" style="padding: 25px;">
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">The Nexus Cloud Relay manages cross-instance communication and decentralized storage capacity.</p>
+                
+                <div id="relay-storage-panel" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+                        <span style="font-family: var(--font-title); font-size: 0.75rem; letter-spacing: 1px;">DATABASE STORAGE</span>
+                        <span id="relay-usage-text" style="font-size: 0.8rem; color: var(--accent-orange);">0 MB / 500 MB</span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+                        <div id="relay-usage-bar" style="height: 100%; width: 0%; background: var(--accent-orange); box-shadow: 0 0 10px var(--accent-glow); transition: width 1s ease;"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+                        <span id="relay-provider" style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">SUPABASE CLOUD</span>
+                        <span id="relay-percent" style="font-size: 0.65rem; color: var(--text-muted);">0% USED</span>
+                    </div>
+                </div>
+
+                <div id="relay-inactive-msg" style="text-align: center; padding: 20px; border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px;">
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">CLOUD RELAY NOT ACTIVE. STORAGE METRICS UNAVAILABLE.</p>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        function updateRelayStorage() {
+            fetch('/api/relay/storage_status').then(r => r.json()).then(data => {
+                const panel = document.getElementById('relay-storage-panel');
+                const msg = document.getElementById('relay-inactive-msg');
+                const status = document.getElementById('settings-relay-status');
+                
+                if (data.active) {
+                    panel.style.display = 'block';
+                    msg.style.display = 'none';
+                    status.textContent = 'SYNCHRONIZED';
+                    status.style.color = '#4ADE80';
+                    
+                    const usedMB = (data.used / (1024 * 1024)).toFixed(2);
+                    const totalMB = (data.total / (1024 * 1024)).toFixed(0);
+                    
+                    document.getElementById('relay-usage-text').textContent = `${usedMB} MB / ${totalMB} MB`;
+                    document.getElementById('relay-usage-bar').style.width = `${data.percent}%`;
+                    document.getElementById('relay-percent').textContent = `${data.percent}% USED`;
+                    document.getElementById('relay-provider').textContent = data.provider;
+                } else {
+                    panel.style.display = 'none';
+                    msg.style.display = 'block';
+                    status.textContent = 'OFFLINE';
+                    status.style.color = '#ff4444';
+                }
+            });
+        }
+        
+        // Update on load and every minute
+        document.addEventListener('DOMContentLoaded', updateRelayStorage);
+        setInterval(updateRelayStorage, 60000);
+
+        // Set My URL on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const myUrl = window.location.origin;
+            // Removed bridge URL reference as requested
+        });
+        </script>
+
+        <!-- Identity Purge Protocol -->
+        <div style="margin-bottom: 40px; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.05);">
+            <h3 style="margin-bottom: 20px;">Identity Purge Protocol</h3>
+            <div class="glass-panel" style="padding: 25px; border-color: rgba(255, 68, 68, 0.2);">
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">DANGER: This action will permanently erase your Nexus identity, conversation history, and decentralized presence.</p>
+                <div class="input-group" style="margin-bottom: 20px;">
+                    <label class="label">Confirm Access Key (Password)</label>
+                    <input type="password" class="nexus-input" id="delete-confirm-password" placeholder="Enter password to confirm">
+                </div>
+                <button id="purge-btn" onclick="deleteAccount()" class="save-btn" style="border-color: #ff4444; color: #ff4444;">PURGE IDENTITY</button>
+            </div>
+        </div>
+
+        <!-- System Performance & Optimization (Maintenance) -->
+        <div style="margin-bottom: 40px; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.05);">
+            <h3 style="margin-bottom: 20px;">Visual Interface & Themes</h3>
+            
+            <div class="wallpaper-grid">
+            <div class="wp-option" onclick="selectTheme('emerald')">
+                <div class="wallpaper-card" style="background-image: url('/static/wallpapers/static/emerald_terrace.jpeg'); --glow-color: #4ADE80;">
+                    <div class="wallpaper-label">Emerald</div>
+                </div>
+                <div class="theme-palette">
+                    <div class="palette-part" style="background: #000;"></div>
+                    <div class="palette-part" style="background: #4ADE80;"></div>
+                </div>
+            </div>
+
+            <div class="wp-option" onclick="selectTheme('amber')">
+                <div class="wallpaper-card" style="background-image: url('/static/wallpapers/static/amber_lounge.jpeg'); --glow-color: #FF8C42;">
+                    <div class="wallpaper-label">Amber</div>
+                </div>
+                <div class="theme-palette">
+                    <div class="palette-part" style="background: #000;"></div>
+                    <div class="palette-part" style="background: #FF8C42;"></div>
+                </div>
+            </div>
+
+            <div class="wp-option" onclick="selectTheme('crimson')">
+                <div class="wallpaper-card" style="background-image: url('/static/wallpapers/static/crimson_protocol.jpeg'); background-size: cover; --glow-color: #FF4444;">
+                    <div class="wallpaper-label">Crimson</div>
+                </div>
+                <div class="theme-palette">
+                    <div class="palette-part" style="background: #000;"></div>
+                    <div class="palette-part" style="background: #FF4444;"></div>
+                </div>
+            </div>
+
+            <div class="wp-option" onclick="selectTheme('cobalt')">
+                <div class="wallpaper-card" style="background-image: url('/static/wallpapers/static/cobalt_horizon.jpeg'); background-size: cover; --glow-color: #007AFF;">
+                    <div class="wallpaper-label">Cobalt</div>
+                </div>
+                <div class="theme-palette">
+                    <div class="palette-part" style="background: #000;"></div>
+                    <div class="palette-part" style="background: #007AFF;"></div>
+                </div>
+            </div>
+
+            <div class="wp-option" onclick="selectTheme('lavender')">
+                <div class="wallpaper-card" style="background-image: url('/static/wallpapers/static/lavender_eclipse.jpeg'); background-size: cover; --glow-color: #AF52DE;">
+                    <div class="wallpaper-label">Lavender</div>
+                </div>
+                <div class="theme-palette">
+                    <div class="palette-part" style="background: #000;"></div>
+                    <div class="palette-part" style="background: #AF52DE;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Section -->
+        <h3 style="margin-bottom: 20px; margin-top: 40px; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 20px;">Security Protocols</h3>
+        <div class="glass-panel" style="padding: 25px; margin-bottom: 40px;">
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <label class="label">Security Configuration</label>
+
+                <!-- Verification Step -->
+                <div id="security-verification-step" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="password" id="fuzzy-password-input" class="nexus-input" placeholder="Enter Last Remembered Password" style="flex: 1;">
+                    <button onclick="verifyIdentity()" class="save-btn" style="width: auto; padding: 0 20px;">
+                        VERIFY IDENTITY
+                    </button>
+                </div>
+
+                <!-- Locked Configuration -->
+                <div id="security-config-section" class="locked-section" style="display: flex; gap: 10px;">
+                    <select id="update-security-question" class="nexus-input">
+                        <option value="" disabled selected>Select Security Question</option>
+                        <option value="pet">What was the name of your first pet?</option>
+                        <option value="school">What elementary school did you attend?</option>
+                        <option value="city">In what city were you born?</option>
+                        <option value="mother">What is your mother's maiden name?</option>
+                        <option value="car">What was the make of your first car?</option>
+                    </select>
+                    <input type="text" id="update-security-answer" class="nexus-input" placeholder="Answer" style="flex: 1;">
+                    <button onclick="updateSecurity()" class="save-btn" style="width: auto; padding: 0 20px;">
+                        SAVE
+                    </button>
+                </div>
+
+                <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 10px 0;"></div>
+
+                <label class="label">Change Access Key (Password)</label>
+
+                {% if user.security_question %}
+                <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px;">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">SECURITY QUESTION</div>
+                    <div style="color: white; font-family: var(--font-title); letter-spacing: 1px;">
+                        {% if user.security_question == 'pet' %}What was the name of your first pet?
+                        {% elif user.security_question == 'school' %}What elementary school did you attend?
+                        {% elif user.security_question == 'city' %}In what city were you born?
+                        {% elif user.security_question == 'mother' %}What is your mother's maiden name?
+                        {% elif user.security_question == 'car' %}What was the make of your first car?
+                        {% else %}{{ user.security_question }}{% endif %}
+                    </div>
+                </div>
+                <input type="text" id="security-answer-verify" class="nexus-input" placeholder="Enter Security Answer" style="width: 100%;">
+                {% else %}
+                <div style="color: #ff4444; font-size: 0.9rem; margin-bottom: 10px;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Security question not set. Please verify identity above to configure.
+                </div>
+                {% endif %}
+
+                <input type="password" id="new-password-input" class="nexus-input" placeholder="Enter new secure password" style="width: 100%;">
+                <button onclick="changePassword()" class="save-btn" style="width: 100%;">
+                    UPDATE CREDENTIALS
+                </button>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">
+                    REQUIREMENT: MIN 12 CHARS • 1 CAPITAL • SYMBOLS (@#$%) ONLY
+                </p>
+            </div>
+        </div>
+
+        <!-- Account Management Section -->
+        <h3 style="margin-bottom: 20px; margin-top: 40px; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 20px;">Account Management</h3>
+        <div class="glass-panel" style="padding: 25px; margin-bottom: 40px;">
+            <p style="font-size: 0.85rem; color: #ff4444; margin-bottom: 20px; font-family: var(--font-body);">
+                <i class="fa-solid fa-triangle-exclamation"></i> 
+                <strong>DANGER ZONE:</strong> Deleting your account will permanently purge all associated data, including your profile, settings, and media. This action is irreversible.
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <input type="password" id="delete-confirm-password" class="nexus-input" placeholder="Confirm Access Key to Purge Account" style="border-color: rgba(255, 68, 68, 0.3);">
+                <button onclick="deleteAccount()" class="save-btn" style="border-color: #ff4444; color: #ff4444; width: 100%;">
+                    DELETE ACCOUNT & PURGE DATA
+                </button>
+            </div>
+        </div>
+
+        <div class="settings-disclaimer">
+            <i class="fa-solid fa-triangle-exclamation" style="color: var(--accent-orange); margin-right: 10px;"></i>
+            <strong>Technical Notice:</strong> The configuration interface is currently undergoing architectural refinements.
+        </div>
+    </div>
+</div>
+
+<script>
+    const themes = {
+        emerald: {
+            primary: '#4ADE80',
+            rgb: '74, 222, 128',
+            wallpaper: '/static/wallpapers/static/emerald_terrace.jpeg'
+        },
+        amber: {
+            primary: '#FF8C42',
+            rgb: '255, 140, 66',
+            wallpaper: '/static/wallpapers/static/amber_lounge.jpeg'
+        },
+        crimson: {
+            primary: '#FF4444',
+            rgb: '255, 68, 68',
+            wallpaper: '/static/wallpapers/static/crimson_protocol.jpeg'
+        },
+        cobalt: {
+            primary: '#007AFF',
+            rgb: '0, 122, 255',
+            wallpaper: '/static/wallpapers/static/cobalt_horizon.jpeg'
+        },
+        lavender: {
+            primary: '#AF52DE',
+            rgb: '175, 82, 222',
+            wallpaper: '/static/wallpapers/static/lavender_eclipse.jpeg'
+        }
+    };
+
+    function selectTheme(key) {
+        // Prevent interaction during transition
+        if (window.isApplyingTheme) return;
+        
+        const theme = themes[key];
+        if (window.applyTheme) {
+            window.applyTheme(theme, theme.wallpaper);
+        }
+        
+        // Remove active class from all cards
+        document.querySelectorAll('.wallpaper-card').forEach(card => {
+            card.classList.remove('active');
+        });
+        
+        // Add active class to selected card
+        const card = event.currentTarget.querySelector('.wallpaper-card');
+        if (card) card.classList.add('active');
+
+        // Save to profile
+        saveProfile(true);
+    }
+
+    // Profile Picture Preview Logic
+    document.getElementById('pic-upload').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const preview = document.getElementById('profile-preview');
+                const imageData = event.target.result;
+                preview.innerHTML = '';
+                preview.style.backgroundImage = `url('${imageData}')`;
+                preview.style.backgroundSize = 'cover';
+                preview.style.backgroundPosition = 'center';
+                localStorage.setItem('nexus_profile_pic', imageData);
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Profile Picture Removal with in-interface confirmation
+    let removePicConfirmMode = false;
+    let removePicTimer = null;
+
+    function removeProfilePic() {
+        const btn = document.getElementById('remove-pic-btn');
+        if (!btn) return;
+
+        if (!removePicConfirmMode) {
+            removePicConfirmMode = true;
+            btn.innerText = 'CONFIRM?';
+            btn.style.backgroundColor = '#ff4444';
+            btn.style.color = 'black';
+            btn.style.boxShadow = '0 0 15px rgba(255, 68, 68, 0.4)';
+            
+            // Auto-reset after 3 seconds if not confirmed
+            removePicTimer = setTimeout(() => {
+                resetRemovePicBtn();
+            }, 3000);
+            return;
+        }
+
+        // Second click - proceed with deletion
+        if (removePicTimer) clearTimeout(removePicTimer);
+        resetRemovePicBtn();
+
+        // Instant UI update
+        const preview = document.getElementById('profile-preview');
+        if (preview) {
+            preview.style.backgroundImage = 'none';
+            preview.innerHTML = '<i class="fa-solid fa-user"></i>';
+        }
+        localStorage.removeItem('nexus_profile_pic');
+
+        // Force instant database update
+        fetch('/api/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profile_pic: "" })
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'success') {
+                if (window.showNotice) window.showNotice('SYSTEM UPDATE', 'Profile picture deleted from database.', 2000);
+            }
+        });
+    }
+
+    function resetRemovePicBtn() {
+        const btn = document.getElementById('remove-pic-btn');
+        if (btn) {
+            btn.innerText = 'REMOVE PICTURE';
+            btn.style.backgroundColor = 'transparent';
+            btn.style.color = '#ff4444';
+            btn.style.boxShadow = 'none';
+        }
+        removePicConfirmMode = false;
+    }
+
+    function saveBridgeConfig() {
+        const url = document.getElementById('bridge-partner-url').value;
+        fetch('/api/bridge/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ partner_url: url })
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'success') {
+                window.showNotice('BRIDGE PROTOCOL', 'Bridge initialized successfully.', 3000, true);
+            }
+        });
+    }
+
+    // Load existing bridge config
+    document.addEventListener('DOMContentLoaded', () => {
+        fetch('/api/bridge/config').then(r => r.json()).then(data => {
+            if (data && data.partner_url) {
+                document.getElementById('bridge-partner-url').value = data.partner_url;
+            }
+        });
+    });
+
+    // Save Profile Logic
+    let lastSavedData = "";
+    function saveProfile(isAutosave = false) {
+        const name = document.getElementById('edit-name').value;
+        const social_user = document.getElementById('edit-social-user').value;
+        const social_num = document.getElementById('edit-social-num').value;
+        const role = document.getElementById('edit-role').value;
+        const company = document.getElementById('edit-company').value;
+        const email = document.getElementById('edit-email').value;
+        const profile_pic = localStorage.getItem('nexus_profile_pic') || "";
+        const theme = JSON.parse(localStorage.getItem('nexus_theme') || "{}");
+        const monitoring_mode = window.monitoring_mode || 'HIGH';
+
+        const profileData = { 
+            name, 
+            social_tag: `${social_user}#${social_num}`,
+            role, 
+            company, 
+            email, 
+            profile_pic, 
+            theme, 
+            monitoring_mode 
+        };
+        const dataStr = JSON.stringify(profileData);
+        
+        if (isAutosave && dataStr === lastSavedData) return;
+        
+        lastSavedData = dataStr;
+
+        if (!isAutosave) {
+            const btn = document.getElementById('save-profile-btn');
+            btn.disabled = true;
+            btn.innerText = 'SYNCING...';
+        }
+
+        fetch('/api/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: dataStr
+        }).then(response => {
+            if (!isAutosave) {
+                const btn = document.getElementById('save-profile-btn');
+                btn.disabled = false;
+                btn.innerText = 'SAVE PROFILE';
+            }
+            if (!response.ok) throw new Error("Server error");
+            return response.json();
+        }).then(() => {
+            if (isAutosave) {
+                window.showNotice('IMCA NEXUS', 'Autosaving Changes...', 2000, false);
+            } else {
+                window.showNotice('IMCA NEXUS', 'Profile Saved Successfully', 3000, true);
+            }
+        }).catch(err => {
+            console.error(err);
+            if (!isAutosave) {
+                const btn = document.getElementById('save-profile-btn');
+                btn.disabled = false;
+                btn.innerText = 'SAVE PROFILE';
+            }
+        });
+    }
+
+    function loadProfileInputs() {
+        fetch('/api/profile').then(r => r.json()).then(data => {
+            const nameField = document.getElementById('edit-name');
+            const roleField = document.getElementById('edit-role');
+            const companyField = document.getElementById('edit-company');
+            const emailField = document.getElementById('edit-email');
+
+            if (nameField) nameField.value = data.name || '';
+            if (roleField) roleField.value = data.role || '';
+            if (companyField) companyField.value = data.company || '';
+            if (emailField) emailField.value = data.email || '';
+            
+            // Load monitoring mode preference
+            if (data.monitoring_mode) {
+                window.monitoring_mode = data.monitoring_mode;
+                const btn = document.getElementById('toggle-live-btn');
+                if (btn) {
+                    if (window.monitoring_mode === 'HIGH') {
+                        btn.innerHTML = '<i class="fa-solid fa-bolt" style="margin-right: 8px;"></i>MONITORING: HIGH FREQUENCY';
+                        btn.style.color = 'var(--accent-orange)';
+                        btn.style.borderColor = 'var(--accent-orange)';
+                    } else {
+                        btn.innerHTML = '<i class="fa-solid fa-clock" style="margin-right: 8px;"></i>MONITORING: PERIODIC';
+                        btn.style.color = 'var(--text-muted)';
+                        btn.style.borderColor = 'var(--text-muted)';
+                        isLive = false; // Sync global state
+                    }
+                }
+            }
+            
+            if (data.profile_pic) {
+                const preview = document.getElementById('profile-preview');
+                if (preview) {
+                    preview.innerHTML = '';
+                    preview.style.backgroundImage = `url('${data.profile_pic}')`;
+                    preview.style.backgroundSize = 'cover';
+                    preview.style.backgroundPosition = 'center';
+                }
+                localStorage.setItem('nexus_profile_pic', data.profile_pic);
+            }
+
+            // Pre-fill security question if exists
+            if (data.security_question) {
+                const sqSelect = document.getElementById('update-security-question');
+                if (sqSelect) sqSelect.value = data.security_question;
+            }
+
+            // Highlighting the active theme card
+            const savedTheme = localStorage.getItem('nexus_theme');
+            if (savedTheme) {
+                const theme = JSON.parse(savedTheme);
+                document.querySelectorAll('.wp-option').forEach(option => {
+                    const labelEl = option.querySelector('.wallpaper-label');
+                    if (labelEl) {
+                        const label = labelEl.innerText.toLowerCase();
+                        const card = option.querySelector('.wallpaper-card');
+                        if (theme.wallpaper && theme.wallpaper.includes(label)) {
+                            card.classList.add('active');
+                        }
+                    }
+                });
+            }
+
+            lastSavedData = JSON.stringify(data);
+        });
+    }
+    loadProfileInputs();
+
+
+    const syncBtn = document.getElementById('sync-btn');
+    const purgeBtn = document.getElementById('purge-btn');
+    const progressBar = document.getElementById('settings-progress-bar');
+    const reflection = document.getElementById('bar-reflection');
+    const storageStats = document.getElementById('storage-stats');
+    
+    if (syncBtn) {
+        syncBtn.addEventListener('click', async () => {
+            window.showNotice('OPTIMIZER', 'Cache synchronization initiated.', 3000, true);
+            // Add fake progress for UI feel
+            let p = 0;
+            const iv = setInterval(() => {
+                p += 10;
+                if (progressBar) progressBar.style.width = p + '%';
+                if (storageStats) storageStats.innerText = `${p}% | 1.2 MB`;
+                if(p >= 100) {
+                    clearInterval(iv);
+                    window.showNotice('SYSTEM', 'Optimization Complete', 3000, true);
+                }
+            }, 100);
+        });
+    }
+
+    if (purgeBtn) {
+        purgeBtn.addEventListener('click', async () => {
+            if (!confirm("DANGER: This will delete your account and all associated data permanently. Proceed?")) return;
+
+            fetch('/api/delete_account_no_pass', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            }).then(r => r.json()).then(data => {
+                if (data.status === 'success') {
+                    window.location.href = '/login';
+                } else {
+                    window.showNotice('ERROR', data.message || 'Purge failed', 3000, false, true);
+                }
+            });
+        });
+    }
+    function verifyIdentity() {
+        const guess = document.getElementById('fuzzy-password-input').value;
+        if (!guess) {
+            window.showNotice('SECURITY ALERT', 'Password guess required.', 3000, false, true);
+            return;
+        }
+
+        fetch('/api/verify_fuzzy_password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password_guess: guess })
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'success') {
+                window.showNotice('IDENTITY VERIFIED', `Match Ratio: ${Math.round(data.ratio * 100)}%. Access Granted.`, 3000, true);
+                document.getElementById('security-config-section').classList.add('unlocked');
+                document.getElementById('security-verification-step').style.display = 'none';
+            } else {
+                window.showNotice('ACCESS DENIED', data.message, 3000, false, true);
+            }
+        });
+    }
+
+    function updateSecurity() {
+        const question = document.getElementById('update-security-question').value;
+        const answer = document.getElementById('update-security-answer').value;
+
+        if (!question || !answer) {
+            window.showNotice('SECURITY ALERT', 'Both question and answer are required.', 3000, false, true);
+            return;
+        }
+
+        fetch('/api/update_security', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ security_question: question, security_answer: answer })
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'success') {
+                window.showNotice('SECURITY UPDATE', 'Security protocols updated.', 3000, true);
+                setTimeout(() => window.location.reload(), 1000); // Reload to update UI
+            } else {
+                window.showNotice('UPDATE FAILED', data.message || 'Protocol error.', 3000, false, true);
+            }
+        });
+    }
+
+    function changePassword() {
+        const newPassword = document.getElementById('new-password-input').value;
+        const securityAnswer = document.getElementById('security-answer-verify').value;
+
+        if (!securityAnswer) {
+            window.showNotice('SECURITY ALERT', 'Security answer required.', 3000, false, true);
+            return;
+        }
+
+        if (!newPassword) {
+            window.showNotice('SYSTEM ALERT', 'New password required.', 3000, false, true);
+            return;
+        }
+
+        fetch('/api/change_password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ new_password: newPassword, security_answer: securityAnswer })
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'success') {
+                window.showNotice('SECURITY UPDATE', 'Access key updated successfully.', 3000, true);
+                document.getElementById('new-password-input').value = '';
+                document.getElementById('security-answer-verify').value = '';
+            } else {
+                window.showNotice('UPDATE FAILED', data.message || 'Protocol error.', 3000, false, true);
+            }
+        });
+    }
+
+    function deleteAccount() {
+        const passwordInput = document.getElementById('delete-confirm-password');
+        const password = passwordInput ? passwordInput.value : '';
+
+        if (!password) {
+            window.showNotice('SECURITY PROTOCOL', 'Confirmation password required for account deletion.', 3000, false, true);
+            if (passwordInput) {
+                passwordInput.classList.add('flash-red');
+                setTimeout(() => passwordInput.classList.remove('flash-red'), 500);
+            }
+            return;
+        }
+
+        if (!confirm('FINAL WARNING: This will permanently delete your identity and all associated data. Proceed?')) {
+            return;
+        }
+
+        fetch('/api/delete_account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: "{{ session.get('user') }}", password: password })
+        }).then(async r => {
+            const data = await r.json();
+            if (data.status === 'success') {
+                // Cinematic Fade to Black
+                const fader = document.createElement('div');
+                fader.style.position = 'fixed';
+                fader.style.inset = '0';
+                fader.style.background = 'black';
+                fader.style.zIndex = '999999';
+                fader.style.opacity = '0';
+                fader.style.transition = 'opacity 2.5s cubic-bezier(0.4, 0, 0.2, 1)';
+                fader.style.pointerEvents = 'all';
+                document.body.appendChild(fader);
+                
+                // Clear all local storage
+                localStorage.clear();
+                
+                requestAnimationFrame(() => {
+                    fader.style.opacity = '1';
+                });
+
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2500);
+            } else {
+                window.showNotice('SYSTEM ERROR', data.message || 'Deletion protocol failed.', 3000, false, true);
+            }
+        }).catch(err => {
+            console.error(err);
+            window.showNotice('COMMUNICATION FAILURE', 'The nexus link was severed before completion.', 3000, false, true);
+        });
+    }
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    }
+</script>
+
+<style>
+    @keyframes reflectForward {
+        0% { left: -100px; opacity: 0; }
+        50% { opacity: 1; }
+        100% { left: 100%; opacity: 0; }
+    }
+    @keyframes reflectBackward {
+        0% { right: -100px; opacity: 0; }
+        50% { opacity: 1; }
+        100% { right: 100%; opacity: 0; }
+    }
+</style>
+
+<script>
+    function saveBridgeConfig() {
+        const urlInput = document.getElementById('bridge-partner-url');
+        let url = urlInput.value.trim();
+        
+        if (!url) {
+            window.showNotice('SYSTEM ALERT', 'Partner URL is required.', 3000, false, true);
+            return;
+        }
+
+        fetch('/api/bridge/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ partner_url: url })
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'success') {
+                window.showNotice('BRIDGE PROTOCOL', 'Partner link synchronized. Verifying...', 3000, true);
+                // Immediately check status
+                setTimeout(() => {
+                    fetch('/api/bridge/status').then(r => r.json()).then(status => {
+                        if (status.partner_online) {
+                            window.showNotice('LINK ESTABLISHED', 'Bridge successfully synchronized.', 4000, true);
+                        } else {
+                            window.showNotice('LINK STANDBY', 'URL saved, but partner is currently unreachable.', 4000, false, true);
+                        }
+                    });
+                }, 1500);
+            }
+        });
+    }
+
+document.addEventListener('DOMContentLoaded', () => {
+    fetch('/api/bridge/config').then(r => r.json()).then(data => {
+        if (data.partner_url) {
+            document.getElementById('bridge-partner-url').value = data.partner_url;
+        }
+    });
+});
+</script>
+{% endblock %}

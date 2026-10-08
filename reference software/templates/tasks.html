@@ -1,0 +1,929 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* CLOCK STYLES */
+    @keyframes orangePulse {
+        0% { color: var(--accent-orange); text-shadow: 0 0 15px var(--accent-orange); opacity: 1; }
+        30% { opacity: 0.8; }
+        100% { color: var(--text-primary); text-shadow: none; opacity: 1; }
+    }
+    .pulse-active { animation: orangePulse 0.8s ease-out forwards; }
+    .blink-colon { animation: blinker 2s linear infinite; opacity: 0.5; }
+    @keyframes blinker { 50% { opacity: 0.1; } }
+
+    /* Animated Wave Line */
+    .themed-wave-line {
+        width: fit-content;
+        height: 4px;
+        background: var(--accent-orange);
+        box-shadow: 0 0 15px var(--accent-glow);
+        margin-top: 3px;
+        position: relative;
+        overflow: hidden;
+        border-radius: 2px;
+        display: block;
+    }
+
+    @keyframes wave-slide {
+        0% { transform: translateX(-150%); }
+        100% { transform: translateX(150%); }
+    }
+
+    .title-underline-wrapper {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: flex-start;
+        width: fit-content;
+    }
+
+    /* Remove the old overlay that was going "over" the whole box */
+    .title-underline-wrapper::after {
+        display: none;
+    }
+
+    .themed-wave-line {
+        width: 100%;
+        height: 4px;
+        background: var(--accent-orange);
+        box-shadow: 0 0 15px var(--accent-glow);
+        margin-top: 3px;
+        position: relative;
+        overflow: hidden;
+        border-radius: 2px;
+    }
+
+    .themed-wave-line::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(110deg, transparent 40%, rgba(255,255,255,1) 50%, transparent 60%);
+        animation: wave-slide 12s infinite linear;
+        display: block;
+    }
+
+    h1.page-title {
+        font-size: 2rem;
+        font-weight: 400;
+        letter-spacing: 1px;
+        color: rgba(211, 211, 211, 0.65);
+        text-transform: uppercase;
+        margin: 0;
+        width: fit-content;
+        position: relative;
+        display: inline-block;
+        font-family: var(--font-title, 'Pasajero', sans-serif);
+    }
+
+    h1.page-title::after {
+        content: "TASK OPERATIONS";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(110deg, transparent 49%, rgba(255, 255, 255, 1) 50%, transparent 51%);
+        background-size: 300% 100%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: shine-text 12s infinite linear;
+        pointer-events: none;
+        mix-blend-mode: plus-lighter;
+    }
+
+    @keyframes shine-text {
+        0% { background-position: 250% 0; }
+        100% { background-position: -150% 0; }
+    }
+
+    @keyframes wave-slide {
+        0% { transform: translateX(-200%); }
+        100% { transform: translateX(200%); }
+    }
+
+    .kanban-container {
+        display: flex;
+        gap: 20px;
+        padding: 20px;
+        height: 300px;
+        overflow-x: auto;
+    }
+
+    .kanban-column {
+        flex: 0 0 200px;
+        min-width: 200px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        max-height: 100%;
+        backdrop-filter: blur(10px);
+    }
+
+    .column-header {
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .column-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .status-not-started { background: rgba(128, 128, 128, 0.25); color: #ccc; }
+    .status-in-progress { background: rgba(0, 122, 255, 0.25); color: #007AFF; }
+    .status-done { background: rgba(74, 222, 128, 0.25); color: #4ADE80; }
+    .status-suspended { background: rgba(255, 68, 68, 0.25); color: #ff4444; }
+    .status-overdue { background: rgba(255, 165, 0, 0.25); color: #FFA500; }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    .task-count {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .task-list {
+        flex: 1;
+        padding: 10px;
+        overflow-y: auto;
+        min-height: 100px;
+    }
+
+    .task-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 4px;
+        padding: 15px;
+        margin-bottom: 12px;
+        cursor: grab;
+        transition: transform 0.2s, background 0.2s, opacity 0.3s ease, transform 0.3s ease;
+        animation: fadeIn 0.3s ease-out forwards;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .task-card.fade-out {
+        opacity: 0;
+        transform: scale(0.9);
+        pointer-events: none;
+    }
+
+    /* Task Card Status Colors */
+    #list-suspended .task-card { border-left: 4px solid #ff4444; }
+    #list-not-started .task-card { border-left: 4px solid #ccc; }
+    #list-in-progress .task-card { border-left: 4px solid #007AFF; }
+    #list-done .task-card { border-left: 4px solid #4ADE80; }
+    #list-overdue .task-card { border-left: 4px solid #FFA500; }
+
+    #list-suspended .task-card i { color: #ff4444 !important; }
+    #list-not-started .task-card i { color: #ccc !important; }
+    #list-in-progress .task-card i { color: #007AFF !important; }
+    #list-done .task-card i { color: #4ADE80 !important; }
+    #list-overdue .task-card i { color: #FFA500 !important; }
+
+    .task-card:hover {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .task-card:active {
+        cursor: grabbing;
+    }
+
+    .sortable-ghost {
+        opacity: 0.4;
+    }
+
+    /* Column-specific Ghost (Target) Styles */
+    #list-suspended .sortable-ghost { background: rgba(255, 68, 68, 0.4) !important; border: 1px dashed #ff4444; }
+    #list-not-started .sortable-ghost { background: rgba(204, 204, 204, 0.4) !important; border: 1px dashed #ccc; }
+    #list-in-progress .sortable-ghost { background: rgba(0, 122, 255, 0.4) !important; border: 1px dashed #007AFF; }
+    #list-done .sortable-ghost { background: rgba(74, 222, 128, 0.4) !important; border: 1px dashed #4ADE80; }
+    #list-overdue .sortable-ghost { background: rgba(255, 165, 0, 0.4) !important; border: 1px dashed #FFA500; }
+
+    .new-page-btn {
+        margin: 10px;
+        padding: 12px;
+        border: 1px dashed rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: transparent;
+        width: calc(100% - 20px);
+        text-align: left;
+    }
+
+    .new-page-btn:hover {
+        border-color: rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.02);
+        color: var(--text-primary);
+    }
+
+    .tabs-header {
+        display: flex;
+        gap: 30px;
+        padding: 0 20px;
+        margin-bottom: 20px;
+    }
+
+    .tab-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-family: var(--font-title);
+        font-size: 0.9rem;
+        padding-bottom: 10px;
+        border-bottom: 2px solid transparent;
+        transition: all 0.3s;
+    }
+
+    .tab-item.active {
+        color: white;
+        border-bottom-color: white;
+    }
+
+    .tab-item i {
+        font-size: 0.8rem;
+    }
+
+    /* Property Panel Styles */
+    .property-panel {
+        position: fixed;
+        top: 0;
+        right: -35%;
+        width: 35%;
+        height: 100vh;
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-left: 1px solid var(--glass-border);
+        z-index: 1000;
+        transition: right 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+        padding: 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+    }
+
+    .property-panel.active {
+        right: 0;
+    }
+
+    .panel-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.3);
+        z-index: 999;
+        display: none;
+        backdrop-filter: blur(2px);
+    }
+
+    .panel-overlay.active {
+        display: block;
+    }
+
+    .property-group {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .property-label {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-family: var(--font-title);
+    }
+
+    .property-input {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 8px;
+        padding: 12px;
+        color: white;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.3s;
+    }
+
+    .property-input:focus {
+        border-color: var(--accent-orange);
+    }
+
+    textarea.property-input {
+        min-height: 120px;
+        resize: none;
+    }
+
+    /* Custom Date Picker override for glassy look */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+        cursor: pointer;
+        opacity: 0.5;
+    }
+</style>
+
+    <div style="margin-bottom: 30px; display: flex; flex-direction: column; gap: 0;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <div class="title-underline-wrapper">
+                <h1 class="page-title">
+                    TASK OPERATIONS
+                </h1>
+                <div class="themed-wave-line" style="width: 100%;"></div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 15px; width: 500px; justify-content: flex-end;">
+                <div id="live-day" style="font-family: var(--font-title); font-size: 1.5rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px; width: 160px; text-align: right;">MONDAY</div>
+                <span style="color: var(--accent-orange); font-size: 1.5rem; font-family: var(--font-title); width: 30px; text-align: center;">||</span>
+                <div id="live-clock" style="font-family: var(--font-body); font-size: 2rem; letter-spacing: 2px; display: flex; align-items: center; gap: 0px; color: var(--text-primary); width: 280px; justify-content: flex-start; font-variant-numeric: tabular-nums;">
+                    <span id="hour-node" style="display: inline-block; min-width: 2ch; text-align: center;">12</span>
+                    <span class="blink-colon" style="display: inline-block; width: 1ch; text-align: center;">:</span>
+                    <span id="min-node" style="display: inline-block; width: 2ch; text-align: center;">00</span>
+                    <span class="blink-colon" style="display: inline-block; width: 1ch; text-align: center;">:</span>
+                    <span id="sec-node" style="display: inline-block; width: 2ch; text-align: center;">00</span>
+                    <span id="ms-node" style="display: inline-block; width: 3ch; font-size: 1rem; color: var(--accent-orange); align-self: flex-end; margin-bottom: 4px; opacity: 0.8; text-shadow: 0 0 10px var(--accent-orange);">.00</span>
+                    <span id="ampm-node" style="margin-left: 15px; font-size: 2rem; color: var(--accent-orange); min-width: 3ch; text-align: left;">AM</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<div class="panel-overlay" id="panel-overlay" onclick="closePanel()"></div>
+<div class="property-panel" id="property-panel">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h2 style="font-family: var(--font-title); font-size: 1.2rem; color: var(--accent-orange);">TASK PROPERTIES</h2>
+        <i class="fa-solid fa-xmark" style="cursor: pointer; color: var(--text-muted);" onclick="closePanel()"></i>
+    </div>
+
+    <div class="property-group">
+        <label class="property-label">Task Name</label>
+        <input type="text" id="panel-title" class="property-input" oninput="updateCurrentTask('title', this.value)">
+    </div>
+
+    <div class="property-group">
+        <label class="property-label">Description</label>
+        <textarea id="panel-desc" class="property-input" placeholder="Add a description..." oninput="updateCurrentTask('desc', this.value)"></textarea>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="property-group">
+            <label class="property-label">Start Date</label>
+            <input type="date" id="panel-start" class="property-input" oninput="updateCurrentTask('start', this.value)">
+        </div>
+        <div class="property-group">
+            <label class="property-label">Due Date</label>
+            <input type="date" id="panel-end" class="property-input" oninput="updateCurrentTask('end', this.value)">
+        </div>
+    </div>
+
+    <div class="property-group">
+        <label class="property-label">Assigned To</label>
+        <div id="assignee-list" style="display: flex; flex-direction: column; gap: 8px; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+            <!-- Dynamic users will be injected here -->
+        </div>
+    </div>
+
+    <div class="property-group">
+        <label class="property-label">Status</label>
+        <select id="panel-status-select" class="property-input" onchange="updateCurrentTask('status', this.value)">
+            <option value="not-started">Not Started</option>
+            <option value="in-progress">In Progress</option>
+            <option value="done">Done</option>
+            <option value="suspended">Suspended</option>
+            <option value="overdue">Overdue</option>
+        </select>
+    </div>
+    
+    <div style="margin-top: auto; display: flex; flex-direction: column; gap: 15px;">
+        <button id="delete-task-btn" class="save-btn" onclick="handleDelete()" style="border-color: #ff4444; color: #ff4444;">DELETE TASK</button>
+        <button class="save-btn" onclick="closePanel()" style="width: 100%;">CLOSE & SYNC</button>
+    </div>
+</div>
+
+<div class="tabs-header">
+    <div class="tab-item active">
+        <i class="fa-solid fa-check-double"></i> Today Tasks
+    </div>
+    <div class="tab-item">
+        <i class="fa-solid fa-check-double"></i> Weekly Tasks
+    </div>
+</div>
+
+<div class="kanban-container">
+    <!-- Suspended -->
+    <div class="kanban-column">
+        <div class="column-header">
+            <div class="column-title">
+                <div class="status-badge status-suspended">
+                    <div class="status-dot"></div> Suspended
+                </div>
+                <span class="task-count" id="count-suspended">0</span>
+            </div>
+            <div style="display: flex; gap: 10px; color: var(--text-muted); cursor: pointer;">
+                <i class="fa-solid fa-ellipsis"></i>
+                <i class="fa-solid fa-plus" onclick="addTask('suspended')"></i>
+            </div>
+        </div>
+        <div class="task-list" id="list-suspended"></div>
+        <button class="new-page-btn" onclick="addTask('suspended')">
+            <i class="fa-solid fa-plus"></i> New task
+        </button>
+    </div>
+
+    <!-- Not Started -->
+    <div class="kanban-column">
+        <div class="column-header">
+            <div class="column-title">
+                <div class="status-badge status-not-started">
+                    <div class="status-dot"></div> Not started
+                </div>
+                <span class="task-count" id="count-not-started">0</span>
+            </div>
+            <div style="display: flex; gap: 10px; color: var(--text-muted); cursor: pointer;">
+                <i class="fa-solid fa-ellipsis"></i>
+                <i class="fa-solid fa-plus" onclick="addTask('not-started')"></i>
+            </div>
+        </div>
+        <div class="task-list" id="list-not-started"></div>
+        <button class="new-page-btn" onclick="addTask('not-started')">
+            <i class="fa-solid fa-plus"></i> New task
+        </button>
+    </div>
+
+    <!-- In Progress -->
+    <div class="kanban-column">
+        <div class="column-header">
+            <div class="column-title">
+                <div class="status-badge status-in-progress">
+                    <div class="status-dot"></div> In progress
+                </div>
+                <span class="task-count" id="count-in-progress">0</span>
+            </div>
+            <div style="display: flex; gap: 10px; color: var(--text-muted); cursor: pointer;">
+                <i class="fa-solid fa-ellipsis"></i>
+                <i class="fa-solid fa-plus" onclick="addTask('in-progress')"></i>
+            </div>
+        </div>
+        <div class="task-list" id="list-in-progress"></div>
+        <button class="new-page-btn" onclick="addTask('in-progress')">
+            <i class="fa-solid fa-plus"></i> New task
+        </button>
+    </div>
+
+    <!-- Done -->
+    <div class="kanban-column">
+        <div class="column-header">
+            <div class="column-title">
+                <div class="status-badge status-done">
+                    <div class="status-dot"></div> Done
+                </div>
+                <span class="task-count" id="count-done">0</span>
+            </div>
+            <div style="display: flex; gap: 10px; color: var(--text-muted); cursor: pointer;">
+                <i class="fa-solid fa-ellipsis"></i>
+                <i class="fa-solid fa-plus" onclick="addTask('done')"></i>
+            </div>
+        </div>
+        <div class="task-list" id="list-done"></div>
+        <button class="new-page-btn" onclick="addTask('done')">
+            <i class="fa-solid fa-plus"></i> New task
+        </button>
+    </div>
+
+    <!-- Overdue -->
+    <div class="kanban-column">
+        <div class="column-header">
+            <div class="column-title">
+                <div class="status-badge status-overdue">
+                    <div class="status-dot"></div> Overdue
+                </div>
+                <span class="task-count" id="count-overdue">0</span>
+            </div>
+            <div style="display: flex; gap: 10px; color: var(--text-muted); cursor: pointer;">
+                <i class="fa-solid fa-ellipsis"></i>
+                <i class="fa-solid fa-plus" onclick="addTask('overdue')"></i>
+            </div>
+        </div>
+        <div class="task-list" id="list-overdue"></div>
+        <button class="new-page-btn" onclick="addTask('overdue')">
+            <i class="fa-solid fa-plus"></i> New task
+        </button>
+    </div>
+</div>
+
+<!-- SortableJS via CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+<script>
+    let tasks = [];
+    loadTasks();
+
+    let currentEditingTaskId = null;
+
+    function saveTasks() {
+        // Save to localStorage for immediate UI responsiveness
+        localStorage.setItem('nexus_tasks', JSON.stringify(tasks));
+        updateCounts();
+        
+        // Save to persistent storage_manager.py via API
+        fetch('/api/storage/tasks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: tasks })
+        }).then(response => {
+            if (response.ok && window.nexusLog) {
+                // Bridge Sync Logic
+                fetch('/api/bridge/config').then(r => r.json()).then(config => {
+                    if (config.partner_url) {
+                        const targetUser = prompt("Sync tasks with partner? Enter partner username (or cancel):");
+                        if (targetUser) {
+                            tasks.forEach(task => {
+                                fetch('/api/tasks/sync', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ target_user: targetUser, task: task })
+                                });
+                            });
+                        }
+                    }
+                });
+            }
+        }).catch(err => {
+            console.error("Task sync failed:", err);
+            if (window.nexusLog) window.nexusLog('CRITICAL: Task synchronisation failure.', 'error');
+        });
+    }
+
+    function loadTasks() {
+        fetch('/api/storage/tasks')
+            .then(r => r.json())
+            .then(data => {
+                if (data && Array.isArray(data)) {
+                    tasks = data;
+                    renderTasks();
+                }
+            })
+            .catch(() => {
+                // Fallback to localStorage if server is unavailable
+                tasks = JSON.parse(localStorage.getItem('nexus_tasks') || '[]');
+                renderTasks();
+            });
+    }
+
+    let deleteConfirmState = false;
+
+    function openPanel(id) {
+        currentEditingTaskId = id;
+        deleteConfirmState = false;
+        const deleteBtn = document.getElementById('delete-task-btn');
+        if (deleteBtn) {
+            deleteBtn.innerText = 'DELETE TASK';
+            deleteBtn.style.background = 'transparent';
+            deleteBtn.style.color = '#ff4444';
+        }
+
+        const task = tasks.find(t => t.id === id);
+        if (!task) return;
+
+        document.getElementById('panel-title').value = task.title || '';
+        document.getElementById('panel-desc').value = task.desc || '';
+        document.getElementById('panel-start').value = task.start || '';
+        document.getElementById('panel-end').value = task.end || '';
+        
+        const statusSelect = document.getElementById('panel-status-select');
+        if (statusSelect) statusSelect.value = task.status;
+        
+        // Fetch current user from profile data
+        fetch('/api/profile').then(r => r.json()).then(user => {
+            const userName = user.name || "Tanishq Giri";
+            const container = document.getElementById('assignee-list');
+            const selectedAssignees = task.assignees || [];
+            
+            if (container) {
+                container.innerHTML = `
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 5px; border-radius: 6px; transition: background 0.2s;">
+                        <input type="checkbox" value="${userName}" ${selectedAssignees.includes(userName) ? 'checked' : ''} 
+                            style="accent-color: var(--accent-orange); width: 16px; height: 16px;"
+                            onchange="toggleAssignee(this.value, this.checked)">
+                        <span style="font-size: 0.9rem; color: white;">${userName} (Me)</span>
+                    </label>
+                `;
+            }
+        });
+
+        document.getElementById('property-panel').classList.add('active');
+        document.getElementById('panel-overlay').classList.add('active');
+        
+        if (window.nexusLog) window.nexusLog(`SYSTEM: Analyzing properties for task segment ID: ${id}`, 'info');
+    }
+
+    function toggleAssignee(name, isChecked) {
+        if (!currentEditingTaskId) return;
+        const taskIndex = tasks.findIndex(t => t.id === currentEditingTaskId);
+        if (taskIndex > -1) {
+            if (!tasks[taskIndex].assignees) tasks[taskIndex].assignees = [];
+            
+            if (isChecked) {
+                if (!tasks[taskIndex].assignees.includes(name)) {
+                    tasks[taskIndex].assignees.push(name);
+                }
+            } else {
+                tasks[taskIndex].assignees = tasks[taskIndex].assignees.filter(a => a !== name);
+            }
+            saveTasks();
+        }
+    }
+
+    function handleDelete() {
+        if (!currentEditingTaskId) return;
+        const deleteBtn = document.getElementById('delete-task-btn');
+        
+        if (!deleteConfirmState) {
+            deleteConfirmState = true;
+            deleteBtn.innerText = 'CONFIRM DELETION';
+            deleteBtn.style.background = '#ff4444';
+            deleteBtn.style.color = 'black';
+            if (window.nexusLog) window.nexusLog('SYSTEM: Deletion sequence initiated. Waiting for confirmation.', 'warn');
+        } else {
+            const taskIndex = tasks.findIndex(t => t.id === currentEditingTaskId);
+            if (taskIndex > -1) {
+                const taskTitle = tasks[taskIndex].title;
+                const taskId = currentEditingTaskId;
+                
+                // Add fade-out effect to the card before removal
+                const card = document.querySelector(`.task-card[data-id="${taskId}"]`);
+                if (card) {
+                    card.classList.add('fade-out');
+                    setTimeout(() => {
+                        tasks.splice(taskIndex, 1);
+                        saveTasks();
+                        if (window.nexusLog) window.nexusLog(`SYSTEM: Task segment "${taskTitle}" purged from matrix.`, 'error');
+                        closePanel();
+                        renderTasks();
+                    }, 300);
+                } else {
+                    tasks.splice(taskIndex, 1);
+                    saveTasks();
+                    closePanel();
+                    renderTasks();
+                }
+            }
+        }
+    }
+
+    function closePanel() {
+        document.getElementById('property-panel').classList.remove('active');
+        document.getElementById('panel-overlay').classList.remove('active');
+        currentEditingTaskId = null;
+        renderTasks();
+    }
+
+    function updateCurrentTask(field, value) {
+        if (!currentEditingTaskId) return;
+        const taskIndex = tasks.findIndex(t => t.id === currentEditingTaskId);
+        if (taskIndex > -1) {
+            tasks[taskIndex][field] = value;
+            saveTasks();
+        }
+    }
+
+    function updateCounts() {
+        const statuses = ['not-started', 'in-progress', 'done', 'suspended', 'overdue'];
+        statuses.forEach(status => {
+            const count = tasks.filter(t => t.status === status).length;
+            const el = document.getElementById(`count-${status}`);
+            if (el) el.innerText = count;
+        });
+    }
+
+    function renderTasks() {
+        const lists = {
+            'not-started': document.getElementById('list-not-started'),
+            'in-progress': document.getElementById('list-in-progress'),
+            'done': document.getElementById('list-done'),
+            'suspended': document.getElementById('list-suspended'),
+            'overdue': document.getElementById('list-overdue')
+        };
+
+        Object.values(lists).forEach(l => { if(l) l.innerHTML = ''; });
+
+        tasks.forEach(task => {
+            const card = document.createElement('div');
+            card.className = 'task-card';
+            card.setAttribute('data-id', task.id);
+            
+            // Refactored interaction handling to fix dragging conflict
+            let isDragging = false;
+            let startX, startY;
+
+            card.addEventListener('mousedown', (e) => {
+                startX = e.pageX;
+                startY = e.pageY;
+                isDragging = false;
+            });
+
+            card.addEventListener('mousemove', (e) => {
+                if (Math.abs(e.pageX - startX) > 5 || Math.abs(e.pageY - startY) > 5) {
+                    isDragging = true;
+                }
+            });
+
+            card.addEventListener('click', (e) => {
+                if (!isDragging) {
+                    openPanel(task.id);
+                }
+            });
+
+            // Touch support for mobile/iPad
+            card.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].pageX;
+                startY = e.touches[0].pageY;
+                isDragging = false;
+            }, { passive: true });
+
+            card.addEventListener('touchmove', (e) => {
+                if (Math.abs(e.touches[0].pageX - startX) > 5 || Math.abs(e.touches[0].pageY - startY) > 5) {
+                    isDragging = true;
+                }
+            }, { passive: true });
+
+            card.addEventListener('touchend', (e) => {
+                if (!isDragging) {
+                    openPanel(task.id);
+                }
+            }, { passive: true });
+            
+            let dateDisplay = '';
+            if (task.end) {
+                dateDisplay = `<div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 8px;">
+                    <i class="fa-regular fa-calendar" style="margin-right: 4px;"></i> ${task.end}
+                </div>`;
+            }
+
+            let assigneeDisplay = '';
+            if (task.assignees && task.assignees.length > 0) {
+                const count = task.assignees.length;
+                const displayText = count === 1 ? task.assignees[0] : `${count} Assigned`;
+                assigneeDisplay = `<div style="font-size: 0.7rem; color: var(--accent-orange); margin-top: 4px; display: flex; align-items: center; gap: 4px;">
+                    <i class="fa-solid fa-user-circle"></i> ${displayText}
+                </div>`;
+            }
+
+            card.innerHTML = `<div style="display: flex; align-items: flex-start; gap: 10px;">
+                <i class="fa-regular fa-file-lines" style="color: var(--text-muted); margin-top: 3px;"></i>
+                <div style="flex: 1;">
+                    <div style="font-size: 0.9rem;">${task.title}</div>
+                    ${dateDisplay}
+                    ${assigneeDisplay}
+                </div>
+            </div>`;
+            if (lists[task.status]) lists[task.status].appendChild(card);
+        });
+
+        // Initialize Sortable for each column including overdue
+        ['not-started', 'in-progress', 'done', 'suspended', 'overdue'].forEach(status => {
+            const el = lists[status];
+            if (!el) return;
+            
+            Sortable.create(el, {
+                group: 'kanban',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onEnd: (evt) => {
+                    const taskId = evt.item.getAttribute('data-id');
+                    const newStatus = evt.to.id.replace('list-', '');
+                    
+                    const taskIndex = tasks.findIndex(t => t.id === taskId);
+                    if (taskIndex > -1) {
+                        tasks[taskIndex].status = newStatus;
+                        saveTasks();
+                    }
+                }
+            });
+        });
+
+        updateCounts();
+    }
+
+    function addTask(status) {
+        const id = Date.now().toString();
+        const newTask = {
+            id: id,
+            title: "Untitled Task",
+            desc: "",
+            start: "",
+            end: "",
+            status: status,
+            assignees: []
+        };
+        tasks.push(newTask);
+        saveTasks();
+        renderTasks();
+        openPanel(id);
+    }
+
+    // Initialize Sortable for each list
+    const listIds = ['list-not-started', 'list-in-progress', 'list-done', 'list-suspended', 'list-overdue'];
+    listIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            new Sortable(el, {
+                group: 'tasks',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                filter: '.no-drag', // Optional: if we want to filter specific elements
+                preventOnFilter: false,
+                onEnd: (evt) => {
+                    const taskId = evt.item.getAttribute('data-id');
+                    const newStatus = evt.to.id.replace('list-', '');
+                    
+                    const taskIndex = tasks.findIndex(t => t.id === taskId);
+                    if (taskIndex > -1) {
+                        const oldStatus = tasks[taskIndex].status;
+                        tasks[taskIndex].status = newStatus;
+                        saveTasks();
+                        
+                        if (window.nexusLog && oldStatus !== newStatus) {
+                            window.nexusLog(`SYSTEM: Task repositioned. Status updated to ${newStatus.replace('-', ' ').toUpperCase()}.`, 'info');
+                        }
+                    }
+                }
+            });
+        }
+    });
+
+    function updateClock() {
+        const now = new Date();
+        const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+        if (document.getElementById('live-day')) {
+            document.getElementById('live-day').innerText = days[now.getDay()];
+        }
+
+        let hours = now.getHours();
+        let minutes = now.getMinutes();
+        let seconds = now.getSeconds();
+        let ampm = hours >= 12 ? 'PM' : 'AM';
+
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+
+        let hStr = hours < 10 ? '0' + hours : hours;
+        let mStr = minutes < 10 ? '0' + minutes : minutes;
+        let sStr = seconds < 10 ? '0' + seconds : seconds;
+
+        if (document.getElementById('hour-node')) {
+            updateDigit('hour-node', hStr);
+            updateDigit('min-node', mStr);
+            updateDigit('sec-node', sStr);
+            document.getElementById('ampm-node').innerText = ampm;
+        }
+    }
+
+    function updateDigit(id, newValue) {
+        const element = document.getElementById(id);
+        if (element && element.innerText !== String(newValue)) {
+            element.innerText = newValue;
+            element.classList.remove('pulse-active');
+            void element.offsetWidth;
+            element.classList.add('pulse-active');
+        }
+    }
+
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    renderTasks();
+</script>
+{% endblock %}

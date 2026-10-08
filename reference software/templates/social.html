@@ -1,0 +1,743 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="height: 100%; display: flex; flex-direction: column; gap: 30px;">
+    <div style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: baseline; padding-right: 0px;">
+        <div class="title-underline-wrapper">
+            <h1 class="dashboard-title">SOCIAL MATRIX</h1>
+            <div class="themed-wave-line"></div>
+        </div>
+    </div>
+
+    <style>
+        .title-underline-wrapper {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: flex-start;
+            width: fit-content;
+        }
+
+        .dashboard-title {
+            font-size: 2rem;
+            font-weight: 400;
+            letter-spacing: 1px;
+            color: rgba(211, 211, 211, 0.65);
+            text-transform: uppercase;
+            width: fit-content;
+            position: relative;
+            display: inline-block;
+            margin: 0;
+            font-family: var(--font-title, 'Pasajero', sans-serif);
+        }
+
+        .dashboard-title::after {
+            content: "SOCIAL MATRIX";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(110deg, transparent 49%, rgba(255, 255, 255, 1) 50%, transparent 51%);
+            background-size: 300% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shine-text 12s infinite linear;
+            pointer-events: none;
+            mix-blend-mode: plus-lighter;
+        }
+
+        .themed-wave-line {
+            width: 100%;
+            height: 4px;
+            background: var(--accent-orange);
+            box-shadow: 0 0 15px var(--accent-glow);
+            margin-top: 3px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 2px;
+        }
+
+        .themed-wave-line::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(110deg, transparent 40%, rgba(255,255,255,1) 50%, transparent 60%);
+            animation: wave-slide 12s infinite linear;
+            display: block;
+        }
+
+        @keyframes shine-text {
+            0% { background-position: 250% 0; }
+            100% { background-position: -150% 0; }
+        }
+
+        @keyframes wave-slide {
+            0% { transform: translateX(-200%); }
+            100% { transform: translateX(200%); }
+        }
+
+        .view-fade {
+            transition: opacity 0.4s ease-in-out;
+            opacity: 1;
+        }
+        
+        .view-hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .social-matrix-container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 320px 1fr 320px;
+            gap: 20px;
+            height: calc(100vh - 180px);
+            min-height: 0;
+        }
+
+        .social-section {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px) saturate(160%);
+            -webkit-backdrop-filter: blur(20px) saturate(160%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .contacts-area {
+            padding: 20px;
+        }
+
+        .search-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+
+        .search-container input {
+            background: none;
+            border: none;
+            color: white;
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            width: 100%;
+        }
+
+        .search-container input:focus { outline: none; }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 8px;
+        }
+
+        .contact-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .contact-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            position: relative;
+        }
+
+        .status-dot {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4ADE80;
+            border: 2px solid #1a1a1a;
+        }
+
+        .contact-info h4 { margin: 0; font-size: 0.95rem; }
+        .contact-info p { margin: 0; font-size: 0.75rem; color: var(--text-muted); }
+
+        .chat-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            position: relative;
+        }
+
+        .message-received {
+            background: rgba(255, 255, 255, 0.05);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-sent {
+            background: var(--accent-orange);
+            color: black;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+
+        .chat-input-area {
+            padding: 20px;
+            display: flex;
+            gap: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .profile-preview-area {
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .large-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin: 0 auto 15px;
+            border: 2px solid var(--accent-orange);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 15px;
+        }
+
+        .media-item {
+            aspect-ratio: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .media-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .media-item:hover img { opacity: 1; }
+
+        .view-all-btn {
+            margin: 15px;
+            background: #D9F99D;
+            color: black;
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            font-family: var(--font-title);
+            font-size: 0.8rem;
+            cursor: pointer;
+            width: calc(100% - 30px);
+        }
+    </style>
+
+    <div class="social-matrix-container">
+        <!-- Section 1: Contacts -->
+        <div class="social-section contacts-area" id="contacts-panel">
+            <!-- Channels View -->
+            <div id="channels-view" class="view-fade" style="height: 100%; display: flex; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0;">
+                    <h3 style="font-family: var(--font-title); letter-spacing: 2px; margin: 0;">CHANNELS</h3>
+                    <i class="fa-solid fa-user-group" style="color: var(--accent-orange); cursor: pointer; font-size: 1.1rem; filter: drop-shadow(0 0 5px var(--accent-glow));" title="Friends" onclick="toggleSocialView('friends')"></i>
+                </div>
+                
+                <div id="unified-list-container" style="flex: 1; overflow-y: auto;">
+                    <div id="unified-online-content" style="transition: opacity 0.3s ease;">
+                        <div style="text-align: center; padding: 10px; opacity: 0.4;"><p style="font-size: 0.6rem; letter-spacing: 1px; margin: 0;">NO ONE ONLINE</p></div>
+                    </div>
+                    <div id="unified-offline-content" style="display: none; opacity: 0; transition: opacity 0.3s ease;">
+                        <div style="text-align: center; padding: 10px; opacity: 0.4;"><p style="font-size: 0.6rem; letter-spacing: 1px; margin: 0;">EVERYONE AWAY</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Friends View -->
+            <div id="friends-view" class="view-fade view-hidden" style="display: none; height: 100%; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0;">
+                    <h3 style="font-family: var(--font-title); letter-spacing: 2px; margin: 0;">FRIENDS</h3>
+                    <i class="fa-solid fa-comments" style="color: var(--accent-orange); cursor: pointer; font-size: 1.1rem; filter: drop-shadow(0 0 5px var(--accent-glow));" title="Channels" onclick="toggleSocialView('channels')"></i>
+                </div>
+
+                <!-- Add Friend Section -->
+                <div style="margin-bottom: 25px; padding: 15px; background: rgba(255, 255, 255, 0.03); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.05); flex-shrink: 0;">
+                    <h4 style="font-family: var(--font-title); font-size: 0.7rem; color: var(--accent-orange); margin: 0 0 12px; letter-spacing: 1px;">TRANSMIT FRIEND REQUEST</h4>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div id="discovery-list" style="max-height: 100px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; margin-bottom: 5px;">
+                            <!-- Online peers injected here -->
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="text" id="friend-username-input" placeholder="Nexus ID" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: white; border-radius: 8px; padding: 10px 12px; font-size: 0.8rem; flex: 1; outline: none;">
+                        </div>
+                        <button onclick="sendFriendRequest()" style="background: var(--accent-orange); border: none; color: black; border-radius: 8px; padding: 10px; font-family: var(--font-title); font-size: 0.75rem; cursor: pointer; transition: all 0.2s ease; letter-spacing: 1px; width: 100%;" onmouseover="this.style.filter='brightness(1.2)'" onmouseout="this.style.filter='none'">SEND FRIEND REQUEST</button>
+                    </div>
+                </div>
+
+                <div style="flex: 1; min-height: 0; display: flex; flex-direction: column;">
+                    <div style="height: 55%; overflow-y: auto; margin-bottom: 20px; flex-shrink: 0;">
+                        <h4 style="font-family: var(--font-title); font-size: 0.8rem; color: var(--accent-orange); margin: 0 0 15px;">FRIEND REQUESTS</h4>
+                        <div id="friend-requests-list">
+                            <div style="text-align: center; padding: 20px; opacity: 0.5; border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px; margin-bottom: 25px;"><p style="font-size: 0.75rem; letter-spacing: 1px; margin: 0;">NO PENDING REQUESTS</p></div>
+                        </div>
+                        <h4 style="font-family: var(--font-title); font-size: 0.8rem; color: var(--text-muted); margin: 0 0 15px;">ALL FRIENDS</h4>
+                        <div id="friends-list">
+                            <div style="text-align: center; padding: 20px 20px; opacity: 0.5;"><p style="font-size: 0.7rem; letter-spacing: 1px;">NO FRIENDS YET</p></div>
+                        </div>
+                    </div>
+
+                    <div style="flex: 1; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.03); display: flex; flex-direction: column; min-height: 0;">
+                        <div style="display: flex; gap: 20px; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); position: relative; flex-shrink: 0;">
+                            <button onclick="switchFriendsUnifiedTab('online')" id="f-tab-btn-online" style="border: none; background: none; color: white; padding: 8px 0; font-family: var(--font-title); font-size: 0.7rem; cursor: pointer;">ONLINE <span style="opacity: 0.5; font-size: 0.6rem;" id="f-online-count">0</span></button>
+                            <button onclick="switchFriendsUnifiedTab('offline')" id="f-tab-btn-offline" style="border: none; background: none; color: var(--text-muted); padding: 8px 0; font-family: var(--font-title); font-size: 0.7rem; cursor: pointer;">OFFLINE <span style="opacity: 0.5; font-size: 0.6rem;" id="f-offline-count">0</span></button>
+                            <div id="f-tab-sliding-indicator" style="position: absolute; bottom: -1px; left: 0; width: 60px; height: 2px; background: var(--accent-orange); box-shadow: 0 0 10px var(--accent-orange); transition: all 0.4s ease;"></div>
+                        </div>
+                        
+                        <div id="f-unified-list-container" style="flex: 1; overflow-y: auto;">
+                            <div id="f-unified-online-content" style="transition: opacity 0.3s ease;">
+                                <div style="text-align: center; padding: 10px; opacity: 0.4;"><p style="font-size: 0.6rem; letter-spacing: 1px; margin: 0;">NO ONE ONLINE</p></div>
+                            </div>
+                            <div id="f-unified-offline-content" style="display: none; opacity: 0; transition: opacity 0.3s ease;">
+                                <div style="text-align: center; padding: 10px; opacity: 0.4;"><p style="font-size: 0.6rem; letter-spacing: 1px; margin: 0;">EVERYONE AWAY</p></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Chat -->
+        <div class="social-section" id="chat-section" style="background: rgba(255, 255, 255, 0.05); position: relative;">
+            <div id="chat-empty-state" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px; z-index: 5; background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px) saturate(160%);">
+                <i class="fa-solid fa-comments" style="font-size: 3rem; color: var(--accent-orange); margin-bottom: 20px; opacity: 0.5;"></i>
+                <h3 style="font-family: var(--font-title); letter-spacing: 2px; margin: 0; opacity: 0.7;">SELECT A CHANNEL</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 10px; letter-spacing: 1px;">START A CONVERSATION TO BEGIN TRANSMISSION</p>
+            </div>
+            <div id="chat-active-state" style="display: none; height: 100%; flex-direction: column;">
+                <div class="chat-header">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div class="contact-avatar" style="width: 40px; height: 40px;"><i class="fa-solid fa-user"></i></div>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <h4 style="margin: 0;" id="active-chat-name">Transmitting...</h4>
+                                <div id="bridge-status-dot" class="status-dot" style="position: static; width: 8px; height: 8px; border: none; background: #FF4444;" title="Bridge Offline"></div>
+                            </div>
+                            <p style="margin: 0; font-size: 0.7rem; color: #4ADE80;">Online</p>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-ellipsis-vertical" style="color: var(--text-muted); cursor: pointer;"></i>
+                </div>
+                <div class="chat-messages"></div>
+                <div class="chat-input-area">
+                    <div class="search-container" style="margin-bottom: 0; flex: 1;"><input type="text" placeholder="Type a message..."></div>
+                    <button class="save-btn" style="padding: 0 25px; border-radius: 12px;"><i class="fa-solid fa-paper-plane"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Profile Info -->
+        <div class="social-section" id="profile-section" style="position: relative;">
+            <div id="profile-empty-state" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(15,15,17,0.5); z-index: 2;"><p style="color: var(--text-muted); font-size: 0.8rem; letter-spacing: 1px;">NO PROFILE SELECTED</p></div>
+            <div id="profile-active-state" style="display: none; height: 100%; flex-direction: column;">
+                <div class="profile-preview-area">
+                    <div class="large-avatar"><i class="fa-solid fa-user" style="font-size: 3rem; margin-top: 20px;"></i></div>
+                    <h3 id="profile-name" style="margin: 0; font-family: var(--font-title); letter-spacing: 2px;">Ann Schleifer</h3>
+                    <p id="profile-status" style="color: var(--text-muted); font-size: 0.8rem; margin-top: 5px;">Digital Architect</p>
+                    <div style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
+                        <i class="fa-solid fa-phone" style="color: var(--text-muted); cursor: pointer;"></i>
+                        <i class="fa-solid fa-video" style="color: var(--text-muted); cursor: pointer;"></i>
+                    </div>
+                </div>
+                <div style="flex: 1; overflow-y: auto;">
+                    <h4 style="font-family: var(--font-title); font-size: 0.8rem; margin: 20px; color: var(--text-muted);">SHARED MEDIA</h4>
+                    <div class="media-grid">
+                        <div class="media-item"><img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=200&h=200&fit=crop" alt="Media"></div>
+                        <div class="media-item"><img src="https://images.unsplash.com/photo-1518770660439-4636190af475?w=200&h=200&fit=crop" alt="Media"></div>
+                        <div class="media-item"><img src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=200&h=200&fit=crop" alt="Media"></div>
+                    </div>
+                    <button class="view-all-btn">VIEW ALL ASSETS</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function loadFriendsData() {
+        // ... (existing loading logic if any)
+        
+        // Add Peer Discovery
+        fetch('/api/relay/discovery').then(r => r.json()).then(peers => {
+            const container = document.getElementById('discovery-list');
+            if (!peers.length) {
+                container.innerHTML = '<p style="font-size: 0.6rem; opacity: 0.4; text-align: center;">NO PEERS DISCOVERED</p>';
+                return;
+            }
+            container.innerHTML = peers.map(p => `
+                <div onclick="document.getElementById('friend-username-input').value='${p.nexus_id}'" 
+                     style="background: rgba(255,255,255,0.05); padding: 5px 10px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1);">
+                    <span style="font-size: 0.75rem;">${p.friendly_name}</span>
+                    <span style="font-size: 0.6rem; opacity: 0.5;">${p.nexus_id}</span>
+                </div>
+            `).join('');
+        });
+    }
+
+    // Refresh discovery every 30s
+    setInterval(loadFriendsData, 30000);
+    window.addEventListener('load', loadFriendsData);
+
+    function sendFriendRequest() {
+        const usernameInput = document.getElementById('friend-username-input');
+        const targetNexusId = usernameInput.value.trim();
+        
+        if (!targetNexusId) {
+            window.showNotice('SYSTEM ALERT', 'Nexus ID is required.', 3000, false, true);
+            return;
+        }
+
+        fetch('/api/relay/friend_request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target_nexus_id: targetNexusId })
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'success') {
+                window.showNotice('SOCIAL MATRIX', 'Friend request transmitted via Relay.', 3000, true);
+                usernameInput.value = '';
+            } else {
+                window.showNotice('TRANSMISSION ERROR', data.message, 3000, false, true);
+            }
+        });
+    }
+
+    function respondRequest(id, action) {
+        fetch(`/api/friend_request/${action}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ request_id: id })
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'success') {
+                window.showNotice('SOCIAL MATRIX', `Request ${action}ed.`, 3000, true);
+                loadFriendsData();
+            }
+        });
+    }
+
+    let activeChatTarget = null;
+    function openChat(targetUsername) {
+        activeChatTarget = targetUsername;
+        document.getElementById('chat-empty-state').style.display = 'none';
+        document.getElementById('chat-active-state').style.display = 'flex';
+        document.getElementById('active-chat-name').innerText = targetUsername;
+        
+        // Load profile preview
+        fetch('/api/profile').then(r => r.json()).then(myData => {
+             // For simplicity, we just show target name. In full mode we'd fetch target profile
+             document.getElementById('profile-empty-state').style.display = 'none';
+             document.getElementById('profile-active-state').style.display = 'flex';
+             document.getElementById('profile-name').innerText = targetUsername;
+        });
+        
+        loadMessages();
+    }
+
+    function loadMessages() {
+        if (!activeChatTarget) return;
+        fetch(`/api/messages/${activeChatTarget}`).then(r => r.json()).then(msgs => {
+            const container = document.querySelector('.chat-messages');
+            container.innerHTML = msgs.map(m => `
+                <div class="message-bubble ${m.sender === '{{ session.get("user") }}' ? 'message-sent' : 'message-received'}" ${m.bridged ? 'style="border-left: 2px solid var(--accent-orange);"' : ''}>
+                    ${m.text}
+                    ${m.bridged ? '<div style="font-size: 0.6rem; opacity: 0.5; margin-top: 5px; text-align: right;">BRIDGED</div>' : ''}
+                </div>
+            `).join('');
+            container.scrollTop = container.scrollHeight;
+        });
+    }
+
+    function sendMessage() {
+        const input = document.querySelector('#chat-active-state .search-container input');
+        const text = input.value.trim();
+        if (!text || !activeChatTarget) return;
+        
+        fetch(`/api/messages/${activeChatTarget}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text })
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'success') {
+                input.value = '';
+                loadMessages();
+            }
+        });
+    }
+
+    function loadFriendsData() {
+        // Online status polling
+        const updateBridgeStatus = () => {
+            fetch('/api/bridge/status')
+                .then(r => r.json())
+                .then(data => {
+                    const statusDot = document.getElementById('bridge-status-dot');
+                    if (statusDot) {
+                        statusDot.style.background = data.partner_online ? '#4ADE80' : '#FF4444';
+                        statusDot.title = data.partner_online ? 'Bridge Synchronized' : 'Bridge Offline';
+                    }
+                }).catch(err => console.error('Bridge status error:', err));
+        };
+        updateBridgeStatus();
+        setInterval(updateBridgeStatus, 10000);
+        fetch('/api/friends/status').then(r => r.json()).then(statuses => {
+            window.friendStatuses = statuses;
+        });
+
+        // Load Requests
+        fetch('/api/storage/friend_requests').then(r => r.json()).then(reqs => {
+            const list = document.getElementById('friend-requests-list');
+            if (!reqs.length) {
+                list.innerHTML = '<div style="text-align: center; padding: 20px; opacity: 0.5; border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px; margin-bottom: 25px;"><p style="font-size: 0.75rem; letter-spacing: 1px; margin: 0;">NO PENDING REQUESTS</p></div>';
+            } else {
+                list.innerHTML = reqs.map(r => `
+                    <div class="contact-item" style="background: rgba(255,255,255,0.03);">
+                        <div class="contact-info" style="flex: 1;">
+                            <h4>${r.from}</h4>
+                            <p>${r.from_tag}</p>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="respondRequest('${r.id}', 'accept')" style="background: var(--accent-orange); border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;"><i class="fa-solid fa-check"></i></button>
+                            <button onclick="respondRequest('${r.id}', 'reject')" style="background: rgba(255,68,68,0.2); border: none; padding: 5px 10px; border-radius: 5px; color: #ff4444; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        });
+
+        // Load Friends
+        fetch('/api/storage/friends').then(r => r.json()).then(friends => {
+            const list = document.getElementById('friends-list');
+            if (!friends.length) {
+                list.innerHTML = '<div style="text-align: center; padding: 20px 20px; opacity: 0.5;"><p style="font-size: 0.7rem; letter-spacing: 1px;">NO FRIENDS YET</p></div>';
+            } else {
+                list.innerHTML = friends.map(f => `
+                    <div class="contact-item" onclick="openChat('${f}')">
+                        <div class="contact-avatar" style="width: 35px; height: 35px;">
+                            <i class="fa-solid fa-user"></i>
+                            <div class="status-dot" style="background: ${window.friendStatuses && window.friendStatuses[f] === 'online' ? '#4ADE80' : '#ff4444'};"></div>
+                        </div>
+                        <div class="contact-info">
+                            <h4>${f}</h4>
+                            <p>${window.friendStatuses && window.friendStatuses[f] === 'online' ? 'Nexus Link Active' : 'Nexus Link Offline'}</p>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadFriendsData();
+        setInterval(loadFriendsData, 5000);
+        setInterval(loadMessages, 3000);
+        
+        const chatInput = document.querySelector('#chat-active-state .search-container input');
+        if (chatInput) {
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+        }
+        
+        const sendBtn = document.querySelector('#chat-active-state .save-btn');
+        if (sendBtn) sendBtn.onclick = sendMessage;
+    });
+
+    function toggleSocialView(view) {
+        const channels = document.getElementById('channels-view');
+        const friends = document.getElementById('friends-view');
+        
+        if (view === 'friends') {
+            channels.style.opacity = '0';
+            setTimeout(() => {
+                channels.style.display = 'none';
+                friends.style.display = 'flex';
+                friends.style.opacity = '0';
+                setTimeout(() => {
+                    friends.style.opacity = '1';
+                    friends.classList.remove('view-hidden');
+                    const btn = document.getElementById('f-tab-btn-online');
+                    if(btn) document.getElementById('f-tab-sliding-indicator').style.width = btn.offsetWidth + 'px';
+                }, 50);
+            }, 400);
+        } else {
+            friends.style.opacity = '0';
+            setTimeout(() => {
+                friends.style.display = 'none';
+                channels.style.display = 'flex';
+                channels.style.opacity = '0';
+                setTimeout(() => {
+                    channels.style.opacity = '1';
+                    channels.classList.remove('view-hidden');
+                    const btn = document.getElementById('tab-btn-online');
+                    if(btn) document.getElementById('tab-sliding-indicator').style.width = btn.offsetWidth + 'px';
+                }, 50);
+            }, 400);
+        }
+    }
+
+    function switchUnifiedTab(type) {
+        const onlineBtn = document.getElementById('tab-btn-online');
+        const offlineBtn = document.getElementById('tab-btn-offline');
+        const onlineContent = document.getElementById('unified-online-content');
+        const offlineContent = document.getElementById('unified-offline-content');
+        const indicator = document.getElementById('tab-sliding-indicator');
+        
+        if (type === 'online') {
+            onlineBtn.style.color = 'white';
+            offlineBtn.style.color = 'var(--text-muted)';
+            indicator.style.left = '0';
+            indicator.style.width = onlineBtn.offsetWidth + 'px';
+            onlineContent.style.display = 'block';
+            setTimeout(() => onlineContent.style.opacity = '1', 10);
+            offlineContent.style.opacity = '0';
+            setTimeout(() => offlineContent.style.display = 'none', 300);
+        } else {
+            offlineBtn.style.color = 'white';
+            onlineBtn.style.color = 'var(--text-muted)';
+            indicator.style.left = offlineBtn.offsetLeft + 'px';
+            indicator.style.width = offlineBtn.offsetWidth + 'px';
+            offlineContent.style.display = 'block';
+            setTimeout(() => offlineContent.style.opacity = '1', 10);
+            onlineContent.style.opacity = '0';
+            setTimeout(() => onlineContent.style.display = 'none', 300);
+        }
+    }
+
+    function switchFriendsUnifiedTab(type) {
+        const onlineBtn = document.getElementById('f-tab-btn-online');
+        const offlineBtn = document.getElementById('f-tab-btn-offline');
+        const onlineContent = document.getElementById('f-unified-online-content');
+        const offlineContent = document.getElementById('f-unified-offline-content');
+        const indicator = document.getElementById('f-tab-sliding-indicator');
+        
+        if (type === 'online') {
+            onlineBtn.style.color = 'white';
+            offlineBtn.style.color = 'var(--text-muted)';
+            indicator.style.left = '0';
+            indicator.style.width = onlineBtn.offsetWidth + 'px';
+            onlineContent.style.display = 'block';
+            setTimeout(() => onlineContent.style.opacity = '1', 10);
+            offlineContent.style.opacity = '0';
+            setTimeout(() => offlineContent.style.display = 'none', 300);
+        } else {
+            offlineBtn.style.color = 'white';
+            onlineBtn.style.color = 'var(--text-muted)';
+            indicator.style.left = offlineBtn.offsetLeft + 'px';
+            indicator.style.width = offlineBtn.offsetWidth + 'px';
+            offlineContent.style.display = 'block';
+            setTimeout(() => offlineContent.style.opacity = '1', 10);
+            onlineContent.style.opacity = '0';
+            setTimeout(() => onlineContent.style.display = 'none', 300);
+        }
+    }
+
+    function loadSocialData() {
+        fetch('/api/storage/friend_requests').then(r => r.json()).then(reqs => {
+            const list = document.getElementById('friend-requests-list');
+            if (list) {
+                if (!reqs || reqs.length === 0) {
+                    list.innerHTML = `<div style="text-align: center; padding: 20px; opacity: 0.5; border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px; margin-bottom: 25px;"><p style="font-size: 0.75rem; letter-spacing: 1px; margin: 0;">NO PENDING REQUESTS</p></div>`;
+                } else {
+                    list.innerHTML = reqs.map(r => `
+                        <div class="contact-item" style="background: rgba(255,255,255,0.03); border-radius: 12px; margin-bottom: 10px; padding: 10px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div class="contact-avatar" style="width: 35px; height: 35px;"><i class="fa-solid fa-user"></i></div>
+                                <div class="contact-info" style="flex: 1;">
+                                    <h4 style="font-size: 0.85rem;">${r.from}</h4>
+                                    <p style="font-size: 0.65rem;">Incoming Request</p>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <i class="fa-solid fa-check" style="color: #4ADE80; cursor: pointer;" onclick="handleRequest('${r.id}', 'accept')"></i>
+                                    <i class="fa-solid fa-xmark" style="color: #ff4444; cursor: pointer;" onclick="handleRequest('${r.id}', 'reject')"></i>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+        });
+    }
+
+    function handleRequest(id, action) {
+        fetch('/api/storage/friend_requests').then(r => r.json()).then(reqs => {
+            const newReqs = reqs.filter(r => r.id !== id);
+            fetch('/api/storage/friend_requests', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: newReqs })
+            }).then(() => {
+                fetch('/api/storage/notifications').then(r => r.json()).then(notifs => {
+                    const newNotifs = notifs.filter(n => n.requestId !== id);
+                    fetch('/api/storage/notifications', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ data: newNotifs })
+                    }).then(() => {
+                        loadSocialData();
+                        if (typeof updateNotifUI === 'function') updateNotifUI();
+                    });
+                });
+            });
+        });
+    }
+
+    window.addEventListener('load', () => {
+        loadSocialData();
+        const btn = document.getElementById('tab-btn-online');
+        if(btn) document.getElementById('tab-sliding-indicator').style.width = btn.offsetWidth + 'px';
+    });
+    setInterval(loadSocialData, 15000);
+</script>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="height: 100%; display: flex; flex-direction: column; gap: 30px;">
+    <div style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: baseline; padding-right: 0px;">
+        <div class="title-underline-wrapper">
+            <h1 class="dashboard-title">FINANCIAL OVERVIEW</h1>
+            <div class="themed-wave-line"></div>
+        </div>
+    </div>
+
+    <style>
+        .title-underline-wrapper {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: flex-start;
+            width: fit-content;
+        }
+
+        .dashboard-title {
+            font-size: 2rem;
+            font-weight: 400;
+            letter-spacing: 1px;
+            color: rgba(211, 211, 211, 0.65);
+            text-transform: uppercase;
+            width: fit-content;
+            position: relative;
+            display: inline-block;
+            margin: 0;
+            font-family: var(--font-title, 'Pasajero', sans-serif);
+        }
+
+        .dashboard-title::after {
+            content: "FINANCIAL OVERVIEW";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(110deg, transparent 49%, rgba(255, 255, 255, 1) 50%, transparent 51%);
+            background-size: 300% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shine-text 12s infinite linear;
+            pointer-events: none;
+            mix-blend-mode: plus-lighter;
+        }
+
+        .themed-wave-line {
+            width: 100%;
+            height: 4px;
+            background: var(--accent-orange);
+            box-shadow: 0 0 15px var(--accent-glow);
+            margin-top: 3px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 2px;
+        }
+
+        .themed-wave-line::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(110deg, transparent 40%, rgba(255,255,255,1) 50%, transparent 60%);
+            animation: wave-slide 12s infinite linear;
+            display: block;
+        }
+
+        @keyframes shine-text {
+            0% { background-position: 250% 0; }
+            100% { background-position: -150% 0; }
+        }
+
+        @keyframes wave-slide {
+            0% { transform: translateX(-200%); }
+            100% { transform: translateX(200%); }
+        }
+
+        .finance-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            flex: 1;
+        }
+    </style>
+
+    <div class="finance-grid">
+        <div class="glass-panel" style="display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px;">
+            <i class="fa-solid fa-vault" style="font-size: 4rem; color: var(--accent-orange); filter: drop-shadow(0 0 15px var(--accent-glow));"></i>
+            <h2 style="font-family: var(--font-title); letter-spacing: 4px; margin: 0;">ASSET VAULT</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px;">ENCRYPTED FINANCIAL DATA ACCESS (NEXUS-F1)</p>
+        </div>
+        <div class="glass-panel" style="display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px;">
+            <i class="fa-solid fa-chart-line" style="font-size: 4rem; color: var(--accent-orange); filter: drop-shadow(0 0 15px var(--accent-glow));"></i>
+            <h2 style="font-family: var(--font-title); letter-spacing: 4px; margin: 0;">MARKET TRENDS</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px;">TELEMETRY DATA UNAVAILABLE (NEXUS-F2)</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>{{ title }}</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* --- 1. FONT LOADING --- */
+        @font-face {
+            font-family: 'Pasajero';
+            src: url("{{ url_for('static', filename='fonts/Pasajero.otf') }}");
+        }
+
+        @font-face {
+            font-family: 'Bourgeois';
+            src: url("{{ url_for('static', filename='fonts/Bourgeois-Book.otf') }}");
+        }
+
+        /* --- 2. VARIABLES --- */
+        :root {
+            --bg-color: #0F0F11;
+
+            /* FROST ENGINE */
+            --glass-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%);
+            /* HOVER STATE: Slightly lighter to indicate activity */
+            --glass-bg-hover: linear-gradient(145deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.09) 100%);
+
+            --glass-blur: blur(40px);
+            --glass-border: rgba(255, 255, 255, 0.15);
+
+            --text-primary: #ffffff;
+            --text-muted: #e0e0e0;
+            --accent-orange: #4ADE80; /* Current Theme Color */
+            --accent-glow: rgba(74, 222, 128, 0.5);
+
+            /* TYPE DEFINITIONS */
+            --font-title: 'Pasajero', sans-serif;
+            --font-body: 'Bourgeois', sans-serif;
+        }
+
+        /* --- NOTIFICATION STACKING --- */
+        #nexus-notice-container {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            pointer-events: none;
+            perspective: 1000px;
+        }
+
+        /* --- NETFLIX STYLE NOTICE --- */
+        .nexus-notice {
+            position: relative;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(25px) saturate(180%);
+            -webkit-backdrop-filter: blur(25px) saturate(180%);
+            padding: 12px 25px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            width: fit-content;
+            min-width: 300px;
+            
+            /* Sharp Glass Aesthetic */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); /* Sharp edges */
+            
+            /* Smooth Entrance/Exit with Stacking Support */
+            transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1),
+                        opacity 0.6s ease,
+                        margin-top 0.6s cubic-bezier(0.19, 1, 0.22, 1),
+                        max-height 0.6s ease;
+            opacity: 0;
+            transform: translateX(-100%) scale(0.9);
+            pointer-events: all;
+            max-height: 0;
+            margin-top: -15px;
+            overflow: hidden;
+        }
+
+        .nexus-notice.active {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+            max-height: 200px;
+            margin-top: 0;
+        }
+
+        .nexus-notice.leaving {
+            opacity: 0;
+            transform: translateX(-120%) scale(0.8);
+            max-height: 0;
+            margin-top: -15px;
+            pointer-events: none;
+        }
+
+        /* Shining corners */
+        .nexus-notice::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border: 1px solid transparent;
+            /* Ultra-thin natural reflection/shine */
+            background: linear-gradient(135deg, 
+                transparent 0%, 
+                transparent 40%, 
+                rgba(255, 255, 255, 0.4) 50%, 
+                transparent 60%, 
+                transparent 100%);
+            background-size: 300% 300%;
+            background-position: 100% 100%;
+            animation: slowReflection 8s infinite linear;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        @keyframes slowReflection {
+            0% { background-position: 200% 200%; }
+            100% { background-position: -200% -200%; }
+        }
+
+        .notice-bar {
+            width: 4px;
+            height: 40px;
+            background: var(--accent-orange);
+            border-radius: 2px;
+            box-shadow: 0 0 15px var(--accent-glow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .notice-text {
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center;
+        }
+
+        /* The "Netflix Style" in-place slide animation */
+        .notice-bar::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            opacity: 0.3;
+            box-shadow: 0 0 10px white;
+            animation: barSlideUp 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes barSlideUp {
+            0% { top: 100%; opacity: 0; }
+            50% { opacity: 0.6; }
+            100% { top: -100%; opacity: 0; }
+        }
+
+        /* --- TRANSITION OVERLAY --- */
+        .transition-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4); 
+            opacity: 1; /* Start visible on page load */
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 9000;
+            pointer-events: all; /* Block interactions until faded out */
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
+                        backdrop-filter 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .theme-transitioning {
+            transition: opacity 0.8s ease-in-out, background-image 0.8s ease-in-out !important;
+        }
+
+        .transition-overlay.fade-out {
+            opacity: 0;
+            backdrop-filter: blur(0px);
+            -webkit-backdrop-filter: blur(0px);
+            pointer-events: none;
+        }
+
+        .transition-overlay.active {
+            opacity: 1;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            pointer-events: all;
+        }
+
+        /* --- 3. GLOBAL BASE --- */
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-body);
+            background-color: var(--bg-color);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            transition: opacity 0.5s ease-in-out; /* Smooth fade for page load */
+            color: var(--text-primary);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            position: fixed; 
+            zoom: 0.9;
+            -moz-transform: scale(0.9);
+            -moz-transform-origin: 0 0;
+        }
+
+        body.loading {
+            opacity: 0;
+        }
+
+        /* Hide scrollbars globally */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        * {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+
+        /* --- 4. ANIMATION ENGINE --- */
+        .app-container {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+            margin-left: 120px; /* Space from sidebar */
+            margin-right: 20px; /* Symmetrical space from right edge */
+            padding: 20px;
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS */
+        }
+
+        .app-container.fade-in {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* --- 5. TYPOGRAPHY --- */
+        h1, h2, h3, .logo-area, .big-title {
+            font-family: var(--font-title);
+            letter-spacing: 1px;
+            font-weight: normal;
+        }
+
+        p, a, span, li, .label, .value, .nav-item, input, button {
+            font-family: var(--font-body) !important;
+        }
+
+        .label {
+            font-size: 1.1rem !important;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            display: block;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        /* --- 6. GLASS COMPONENTS --- */
+        /* Common base style */
+        .glass-panel, .sidebar {
+            background: var(--glass-bg) !important;
+            backdrop-filter: var(--glass-blur) !important;
+            -webkit-backdrop-filter: var(--glass-blur) !important;
+            border: 1px solid var(--glass-border) !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            /* SMOOTH TRANSITION for reactivity */
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1),
+                        background 0.3s ease,
+                        box-shadow 0.3s ease,
+                        border-color 0.3s ease;
+        }
+
+        .glass-panel {
+            border-radius: 30px;
+            padding: 30px;
+        }
+
+        /* REACTIVITY: The Hover Effect */
+        .glass-panel:hover {
+            background: var(--glass-bg-hover) !important;
+            transform: translateY(-5px); /* Gentle Lift */
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4); /* Deeper Shadow */
+            border-color: rgba(255, 255, 255, 0.25) !important; /* Brighter Border */
+        }
+
+        /* --- 7. SIDEBAR --- */
+        .sidebar {
+            position: fixed;
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+            width: 80px;
+            max-height: 80vh; /* Don't stretch too much */
+            border-radius: 40px;
+            padding: 30px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            z-index: 100;
+        }
+
+        .nav-item {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 60px; /* Larger hit area for touch */
+            height: 60px; /* Larger hit area for touch */
+            border-radius: 50%;
+            text-decoration: none;
+            touch-action: manipulation;
+            position: relative;
+            z-index: 10;
+        }
+
+        .nav-item:hover {
+            color: white;
+        }
+
+        .nav-item.active {
+            color: white;
+            /* text-shadow removed for cleaner green look */
+        }
+
+        .nav-indicator {
+            position: absolute;
+            left: 10px;
+            width: 60px;
+            height: 60px;
+            background: var(--accent-orange);
+            border-radius: 100px;
+            /* Ultra-accurate high-end animation */
+            transition: top 0.45s cubic-bezier(0.19, 1, 0.22, 1), 
+                        height 0.3s cubic-bezier(0.19, 1, 0.22, 1),
+                        background 0.4s ease,
+                        box-shadow 0.4s ease;
+            box-shadow: 0 0 20px var(--accent-glow);
+            z-index: 1;
+            will-change: top, height;
+            transform-origin: center center;
+        }
+
+        .sidebar.transitioning .nav-indicator {
+            height: 75px; /* Symmetrical capsule stretch */
+        }
+        
+        /* Downward movement: stretch from top */
+        .sidebar.moving-down .nav-indicator {
+            transform-origin: center top;
+        }
+        
+        /* Upward movement: stretch from bottom */
+        .sidebar.moving-up .nav-indicator {
+            transform-origin: center bottom;
+        }
+
+        /* --- 8. FULLSCREEN TOGGLE --- */
+        #fullscreen-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            touch-action: manipulation;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #fullscreen-btn:hover {
+            background: var(--accent-orange);
+            color: white;
+            transform: scale(1.15);
+            box-shadow: 0 0 25px rgba(255, 140, 66, 0.5);
+            border-color: transparent;
+        }
+
+        /* Click state (Active) */
+        #fullscreen-btn:active {
+            transform: scale(0.9) rotate(90deg);
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                left: 10px;
+                width: 70px;
+            }
+            .app-container {
+                margin-left: 90px;
+                padding: 15px;
+            }
+        }
+
+        /* Landscape iPad optimization */
+        @media (orientation: landscape) and (max-device-width: 1366px) {
+            .sidebar {
+                gap: 20px;
+                padding: 30px 0;
+            }
+        }
+    </style>
+</head>
+<body data-username="{{ session.get('user', '') }}">
+
+    <div id="nexus-transition-overlay" class="transition-overlay"></div>
+    
+    <div id="nexus-notice-container"></div>
+
+    <!-- IMCA NEXUS LINK Indicator -->
+    <div id="nexus-link-indicator" style="position: fixed; bottom: 20px; right: 90px; z-index: 10001; display: flex; align-items: center; gap: 15px; pointer-events: none; height: 60px;">
+        <div style="font-family: var(--font-title); font-size: 0.8rem; letter-spacing: 2px; color: var(--text-muted); white-space: nowrap;">IMCA NEXUS LINK</div>
+        <div style="width: 2px; height: 30px; background: rgba(255,255,255,0.1); position: relative; overflow: hidden; border-radius: 1px;">
+            <div id="nexus-link-bar" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #ff4444; box-shadow: 0 0 10px #ff4444; transition: background 0.5s ease, box-shadow 0.5s ease;"></div>
+            <div id="nexus-link-reflection" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0.3; box-shadow: 0 0 10px white; animation: barSlideUp 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1);"></div>
+        </div>
+        <div id="nexus-link-status" style="font-family: var(--font-title); font-size: 0.8rem; letter-spacing: 2px; color: #ff4444; transition: color 0.5s ease; width: 80px;">OFFLINE</div>
+    </div>
+    
+    <div style="position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; gap: 15px; align-items: center;">
+        <div id="notification-bell" style="width: 45px; height: 45px; border-radius: 50%; background: var(--glass-bg); backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: relative;">
+            <i class="fa-solid fa-bell"></i>
+            <div id="notif-ping" style="display: none; position: absolute; top: -2px; right: -2px; width: 20px; height: 20px; background: #ff4444; color: white; border-radius: 50%; font-size: 0.7rem; font-family: var(--font-title); align-items: center; justify-content: center; border: 2px solid var(--bg-color); box-shadow: 0 0 10px rgba(255, 68, 68, 0.5);">0</div>
+        </div>
+
+        <!-- Notification Popup -->
+        <div id="notif-popup" style="display: none; position: absolute; top: 55px; right: 0; width: 320px; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.4); z-index: 1001; padding: 20px; flex-direction: column; gap: 15px; animation: popupSlide 0.3s cubic-bezier(0.19, 1, 0.22, 1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                <h3 style="margin: 0; font-size: 0.9rem; letter-spacing: 1px; color: var(--accent-orange);">NOTIFICATIONS</h3>
+                <span style="font-size: 0.7rem; color: var(--text-muted); cursor: pointer;" onclick="clearAllNotifs()">Clear All</span>
+            </div>
+            <div id="notif-list" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+                <!-- Notifications injected here -->
+                <div style="text-align: center; padding: 20px; opacity: 0.5;">
+                    <p style="font-size: 0.75rem; letter-spacing: 1px; margin: 0;">NO ACTIVE NOTIFICATIONS</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes popupSlide {
+            from { opacity: 0; transform: translateY(-10px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        #notif-list::-webkit-scrollbar { width: 4px; }
+        #notif-list::-webkit-scrollbar-thumb { background: var(--accent-orange); border-radius: 2px; }
+    </style>
+
+    <nav class="sidebar">
+        <div class="nav-indicator"></div>
+        <div class="logo-area" style="color: var(--accent-orange); font-size: 1.4rem; margin-bottom: 20px; z-index: 10;">
+            <i class="fa-solid fa-layer-group"></i>
+        </div>
+
+        <a href="{{ url_for('dashboard') }}" class="nav-item transition-link {% if request.endpoint == 'dashboard' %}active{% endif %}" data-index="0">
+            <i class="fa-solid fa-house"></i>
+        </a>
+        <a href="{{ url_for('social') }}" class="nav-item transition-link {% if request.endpoint == 'social' %}active{% endif %}" data-index="1">
+            <i class="fa-solid fa-users"></i>
+        </a>
+        <a href="{{ url_for('finances') }}" class="nav-item transition-link {% if request.endpoint == 'finances' %}active{% endif %}" data-index="2">
+            <i class="fa-solid fa-wallet"></i>
+        </a>
+        <a href="{{ url_for('tasks') }}" class="nav-item transition-link {% if request.endpoint == 'tasks' %}active{% endif %}" data-index="3">
+            <i class="fa-solid fa-list-check"></i>
+        </a>
+        <a href="{{ url_for('schedule') }}" class="nav-item transition-link {% if request.endpoint == 'schedule' %}active{% endif %}" data-index="4">
+            <i class="fa-solid fa-clock"></i>
+        </a>
+        <a href="{{ url_for('calendar') }}" class="nav-item transition-link {% if request.endpoint == 'calendar' %}active{% endif %}" data-index="5">
+            <i class="fa-solid fa-calendar-days"></i>
+        </a>
+        <a href="{{ url_for('health') }}" class="nav-item transition-link {% if request.endpoint == 'health' %}active{% endif %}" data-index="6">
+            <i class="fa-solid fa-heart-pulse"></i>
+        </a>
+
+        <div style="margin-top: auto; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 15px; margin-bottom: 20px;">
+             <a href="{{ url_for('settings') }}" class="nav-item transition-link {% if request.endpoint == 'settings' %}active{% endif %}" data-index="7">
+                 <i class="fa-solid fa-gear"></i>
+             </a>
+             <a href="{{ url_for('logout') }}" class="nav-item" style="color: #ff4444; opacity: 0.7;" title="Terminate Session">
+                 <i class="fa-solid fa-power-off"></i>
+             </a>
+        </div>
+    </nav>
+
+    <div class="app-container">
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    <button id="fullscreen-btn" title="Toggle Fullscreen" style="bottom: 20px; right: 20px;">
+        <i class="fa-solid fa-expand"></i>
+    </button>
+
+    <script>
+        // Start with hidden body to prevent flash
+        document.body.classList.add('loading');
+
+        // --- PERSISTENCE ENGINE ---
+        function checkNewNotifs() {
+            fetch('/api/storage/notifications').then(r => r.json()).then(notifs => {
+                if (Array.isArray(notifs)) {
+                    const unread = notifs.filter(n => !n.read);
+                    const ping = document.getElementById('notif-ping');
+                    if (ping) {
+                        if (unread.length > 0) {
+                            ping.style.display = 'flex';
+                            ping.textContent = unread.length;
+                            
+                            // Look for recent bridge notifications
+                            const latest = unread[unread.length - 1];
+                            if (latest && latest.type === 'bridge' && window.lastBridgeNotifId !== latest.id) {
+                                window.lastBridgeNotifId = latest.id;
+                                if (window.showNotice) {
+                                    window.showNotice('NEXUS BRIDGE', latest.message, 5000, true);
+                                }
+                            }
+                        } else {
+                            ping.style.display = 'none';
+                        }
+                    }
+                }
+            });
+        }
+        setInterval(checkNewNotifs, 5000);
+        checkNewNotifs();
+        window.applyTheme = function(theme, wallpaper) {
+            const overlay = document.getElementById('nexus-transition-overlay');
+            if (overlay) {
+                overlay.classList.add('active');
+                
+                setTimeout(() => {
+                    document.documentElement.style.setProperty('--accent-orange', theme.primary);
+                    document.documentElement.style.setProperty('--accent-glow', `rgba(${theme.rgb}, 0.5)`);
+                    
+                    // Preload image for smoother switch
+                    const img = new Image();
+                    img.src = wallpaper;
+                    img.onload = () => {
+                        document.body.style.backgroundImage = `url('${wallpaper}')`;
+                        localStorage.setItem('nexus_theme', JSON.stringify(theme));
+                        
+                        setTimeout(() => {
+                            overlay.classList.remove('active');
+                            overlay.classList.add('fade-out');
+                        }, 300);
+                    };
+                }, 400);
+            } else {
+                // Fallback
+                document.documentElement.style.setProperty('--accent-orange', theme.primary);
+                document.documentElement.style.setProperty('--accent-glow', `rgba(${theme.rgb}, 0.5)`);
+                document.body.style.backgroundImage = `url('${wallpaper}')`;
+                localStorage.setItem('nexus_theme', JSON.stringify(theme));
+            }
+        };
+
+        function loadPersistentTheme() {
+            const savedTheme = localStorage.getItem('nexus_theme');
+            if (savedTheme) {
+                const theme = JSON.parse(savedTheme);
+                document.documentElement.style.setProperty('--accent-orange', theme.primary);
+                document.documentElement.style.setProperty('--accent-glow', `rgba(${theme.rgb}, 0.5)`);
+                document.body.style.backgroundImage = `url('${theme.wallpaper}')`;
+            }
+            
+            // Sync with server in background
+            fetch('/api/profile').then(r => r.json()).then(data => {
+                if (data.theme) {
+                    const theme = data.theme;
+                    document.documentElement.style.setProperty('--accent-orange', theme.primary);
+                    document.documentElement.style.setProperty('--accent-glow', `rgba(${theme.rgb}, 0.5)`);
+                    document.body.style.backgroundImage = `url('${theme.wallpaper}')`;
+                    localStorage.setItem('nexus_theme', JSON.stringify(theme));
+                }
+            });
+        }
+        loadPersistentTheme();
+
+        // --- IMCA NEXUS LINK ENGINE ---
+        let lastLinkState = null;
+        function updateNexusLink() {
+            const bar = document.getElementById('nexus-link-bar');
+            const statusText = document.getElementById('nexus-link-status');
+            const reflection = document.getElementById('nexus-link-reflection');
+
+            fetch('/api/bridge/status').then(r => r.json()).then(data => {
+                const isOnline = data.internet && data.bridge_active;
+                const state = isOnline ? 'ONLINE' : 'OFFLINE';
+
+                if (state !== lastLinkState) {
+                    if (!isOnline && lastLinkState !== null) {
+                        window.showNotice('SYSTEM ALERT', 'IMCA NEXUS LINK SEVERED - CONNECTION OFFLINE', 5000, false, true);
+                    }
+                    lastLinkState = state;
+                }
+
+                if (isOnline) {
+                    bar.style.background = '#4ADE80';
+                    bar.style.boxShadow = '0 0 10px #4ADE80';
+                    statusText.innerText = 'ONLINE';
+                    statusText.style.color = '#4ADE80';
+                } else {
+                    bar.style.background = '#ff4444';
+                    bar.style.boxShadow = '0 0 10px #ff4444';
+                    statusText.innerText = 'OFFLINE';
+                    statusText.style.color = '#ff4444';
+                }
+            }).catch(err => {
+                if (lastLinkState !== 'OFFLINE') {
+                    window.showNotice('SYSTEM ALERT', 'CRITICAL: NEXUS CORE COMMUNICATION FAILURE', 5000, false, true);
+                    lastLinkState = 'OFFLINE';
+                }
+                bar.style.background = '#ff4444';
+                bar.style.boxShadow = '0 0 10px #ff4444';
+                statusText.innerText = 'OFFLINE';
+                statusText.style.color = '#ff4444';
+            });
+        }
+        setInterval(updateNexusLink, 5000);
+        updateNexusLink();
+
+        // --- NOTIFICATION ENGINE ---
+        function updateNotifUI() {
+            fetch('/api/storage/notifications').then(r => r.json()).then(notifs => {
+                const ping = document.getElementById('notif-ping');
+                const list = document.getElementById('notif-list');
+                const unreadNotifs = Array.isArray(notifs) ? notifs.filter(n => !n.read) : [];
+                
+                if (ping) {
+                    const count = unreadNotifs.length;
+                    if (count > 0) {
+                        ping.innerText = count > 9 ? '9+' : count;
+                        ping.style.display = 'flex';
+                    } else {
+                        ping.style.display = 'none';
+                    }
+                }
+
+                if (list) {
+                    if (notifs.length === 0) {
+                        list.innerHTML = `<div style="text-align: center; padding: 20px; opacity: 0.5;"><p style="font-size: 0.75rem; letter-spacing: 1px; margin: 0;">NO ACTIVE NOTIFICATIONS</p></div>`;
+                    } else {
+                        list.innerHTML = notifs.map(n => `
+                            <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 12px; border: 1px solid ${n.read ? 'transparent' : 'var(--glass-border)'};">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+                                    <div style="font-size: 0.8rem; letter-spacing: 0.5px; color: ${n.read ? 'var(--text-muted)' : 'white'};">${n.message}</div>
+                                    <i class="fa-solid fa-xmark" style="font-size: 0.7rem; cursor: pointer; opacity: 0.5;" onclick="dismissNotif('${n.id}')"></i>
+                                </div>
+                                <div style="font-size: 0.6rem; color: var(--accent-orange); margin-top: 5px; opacity: 0.7;">${n.type.toUpperCase()}</div>
+                            </div>
+                        `).reverse().join('');
+                    }
+                }
+            });
+        }
+
+        window.dismissNotif = function(id) {
+            fetch('/api/storage/notifications').then(r => r.json()).then(notifs => {
+                const updated = notifs.filter(n => n.id !== id);
+                fetch('/api/storage/notifications', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: updated })
+                }).then(() => updateNotifUI());
+            });
+        };
+
+        window.clearAllNotifs = function() {
+            fetch('/api/storage/notifications', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: [] })
+            }).then(() => updateNotifUI());
+        };
+        
+        setInterval(updateNotifUI, 10000); // Check every 10s
+        document.addEventListener('DOMContentLoaded', updateNotifUI);
+
+        document.getElementById('notification-bell')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const popup = document.getElementById('notif-popup');
+            if (popup) {
+                const isOpen = popup.style.display === 'flex';
+                popup.style.display = isOpen ? 'none' : 'flex';
+                
+                // Mark all as read when opening
+                if (!isOpen) {
+                    fetch('/api/storage/notifications').then(r => r.json()).then(notifs => {
+                        const updated = notifs.map(n => ({...n, read: true}));
+                        fetch('/api/storage/notifications', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ data: updated })
+                        }).then(() => updateNotifUI());
+                    });
+                }
+            }
+        });
+
+        // Close popup when clicking outside
+        document.addEventListener('click', (e) => {
+            const popup = document.getElementById('notif-popup');
+            const bell = document.getElementById('notification-bell');
+            if (popup && popup.style.display === 'flex' && !popup.contains(e.target) && !bell.contains(e.target)) {
+                popup.style.display = 'none';
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Fade out the blur overlay once DOM is ready
+            const overlay = document.getElementById('nexus-transition-overlay');
+            if (overlay) {
+                setTimeout(() => {
+                    overlay.classList.add('fade-out');
+                }, 100);
+            }
+            
+            // Fade in body once DOM is ready
+            setTimeout(() => {
+                document.body.classList.remove('loading');
+            }, 100);
+            const sidebar = document.querySelector('.sidebar');
+            const indicator = document.querySelector('.nav-indicator');
+            
+            function updateIndicator() {
+                const activeItem = document.querySelector('.nav-item.active');
+                if (activeItem && indicator) {
+                    indicator.style.top = (activeItem.offsetTop) + 'px';
+                }
+            }
+
+            // Initial position
+            updateIndicator();
+
+            // 1. Fade Logic
+            const container = document.querySelector('.app-container');
+            setTimeout(() => { container.classList.add('fade-in'); }, 50);
+
+            const links = document.querySelectorAll('.transition-link');
+            links.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    if (link.classList.contains('active')) return;
+                    e.preventDefault();
+                    
+                    const target = link.href;
+                    
+                    // Trigger symmetrical fluid capsule animation
+                    sidebar.classList.add('transitioning');
+                    const targetTop = link.offsetTop;
+                    
+                    // Direct top movement
+                    indicator.style.top = targetTop + 'px';
+                    
+                    container.classList.remove('fade-in');
+                    
+                    // Snap back symmetrically exactly at destination
+                    setTimeout(() => { 
+                        sidebar.classList.remove('transitioning');
+                    }, 350); 
+
+                    // Trigger overlay transition for logout or page change
+                    const overlay = document.getElementById('nexus-transition-overlay');
+                    if (overlay) {
+                        overlay.classList.add('active');
+                    }
+
+                    setTimeout(() => { 
+                        window.location.href = target; 
+                    }, 500); 
+                });
+            });
+
+            // --- BRIDGE STATUS ENGINE ---
+            async function checkBridgeStatus() {
+                try {
+                    const resp = await fetch('/api/bridge/status');
+                    if (!resp.ok) {
+                         const bar = document.getElementById('nexus-link-bar');
+                         const text = document.getElementById('nexus-link-status');
+                         if (bar && text) {
+                            bar.style.background = '#ff4444';
+                            bar.style.boxShadow = '0 0 10px #ff4444';
+                            text.textContent = 'OFFLINE';
+                            text.style.color = '#ff4444';
+                         }
+                         return;
+                    }
+                    const status = await resp.json();
+                    
+                    const bar = document.getElementById('nexus-link-bar');
+                    const text = document.getElementById('nexus-link-status');
+                    
+                    let finalStatus = 'OFFLINE';
+                    let finalColor = '#ff4444';
+
+                    // Priority: Relay Active
+                    if (status.relay_mode) {
+                        finalStatus = 'SYNCHRONIZED';
+                        finalColor = '#4ADE80';
+                    } else if (status.partner_url_configured) {
+                        if (status.partner_online) {
+                            finalStatus = 'SYNCHRONIZED';
+                            finalColor = '#4ADE80';
+                        } else if (status.bridge_active) {
+                            finalStatus = 'STANDBY';
+                            finalColor = '#FFB800';
+                        }
+                    } else {
+                        finalStatus = 'IDLE';
+                        finalColor = 'rgba(255,255,255,0.4)';
+                    }
+
+                    if (bar && text) {
+                        bar.style.background = finalColor;
+                        bar.style.boxShadow = `0 0 10px ${finalColor}`;
+                        text.textContent = finalStatus;
+                        text.style.color = finalColor;
+                    }
+
+                    // Update Settings Page indicator if present
+                    const settingsStatus = document.getElementById('settings-bridge-status');
+                    if (settingsStatus) {
+                        settingsStatus.textContent = finalStatus;
+                        settingsStatus.style.color = finalColor;
+                    }
+
+                } catch (e) {
+                    console.error('Status check failed:', e);
+                }
+            }
+            window.checkBridgeStatus = checkBridgeStatus;
+            setInterval(checkBridgeStatus, 10000);
+            checkBridgeStatus();
+
+            // 2. Fullscreen Logic
+            const fsBtn = document.getElementById('fullscreen-btn');
+            const fsIcon = fsBtn.querySelector('i');
+
+            // --- THEME & WALLPAPER SYSTEM ---
+            window.showNotice = function(title, status, duration = 3000, showBlur = true, isError = false) {
+                const container = document.getElementById('nexus-notice-container');
+                const overlay = document.getElementById('nexus-transition-overlay');
+                
+                // Create unique notice element
+                const notice = document.createElement('div');
+                notice.className = 'nexus-notice';
+                
+                const barColor = isError ? '#ff4444' : 'var(--accent-orange)';
+                const barShadow = isError ? '0 0 15px rgba(255, 68, 68, 0.5)' : '0 0 15px var(--accent-glow)';
+                
+                notice.innerHTML = `
+                    <div class="notice-bar" style="background: ${barColor}; box-shadow: ${barShadow};"></div>
+                    <div class="notice-text">
+                        <div style="font-family: var(--font-title); color: white; font-size: 1.1rem; letter-spacing: 1px; line-height: 1.2;">${title}</div>
+                        <div style="font-family: var(--font-body); color: white; font-size: 0.85rem; opacity: 0.9; letter-spacing: 0.5px;">${status}</div>
+                    </div>
+                `;
+
+                container.appendChild(notice);
+                
+                // Overlay handling with forceful removal safety
+                if (showBlur) {
+                    overlay.classList.add('active');
+                    // Safety: Force hide overlay if it gets stuck
+                    clearTimeout(window.overlaySafetyTimeout);
+                    window.overlaySafetyTimeout = setTimeout(() => {
+                        if (container.children.length === 0) {
+                            overlay.classList.remove('active');
+                        }
+                    }, duration + 2000);
+                }
+
+                // Trigger entrance
+                requestAnimationFrame(() => {
+                    notice.classList.add('active');
+                });
+
+                // Set removal timer
+                setTimeout(() => {
+                    notice.classList.add('leaving');
+                    
+                    // After exit animation, check if we should remove overlay
+                    setTimeout(() => {
+                        notice.remove();
+                        // Only remove overlay if this was the last notice
+                        if (container.children.length === 0) {
+                            overlay.classList.remove('active');
+                        }
+                    }, 600);
+                }, duration);
+            };
+
+            window.applyTheme = function(theme, wallpaperUrl) {
+                // Prevent duplicate triggering
+                if (window.isApplyingTheme) return;
+                window.isApplyingTheme = true;
+
+                // 1. Show Transition Overlay immediately to hide flicker
+                const overlay = document.getElementById('nexus-transition-overlay');
+                if (overlay) overlay.classList.add('active');
+
+                window.showNotice('IMCA NEXUS', 'Applying Changes. Please Wait...', 2000, false);
+
+                // 2. Pre-load image to ensure seamless swap
+                const img = new Image();
+                img.onload = () => {
+                    // Small delay to let the overlay blur settle
+                    setTimeout(() => {
+                        // 3. Apply Variables
+                        document.documentElement.style.setProperty('--accent-orange', theme.primary);
+                        document.documentElement.style.setProperty('--accent-glow', `rgba(${theme.rgb}, 0.5)`);
+                        
+                        // 4. Update Background
+                        document.body.style.backgroundImage = `url('${wallpaperUrl}')`;
+                        
+                        // Persist Theme
+                        localStorage.setItem('nexus_theme', JSON.stringify({
+                            primary: theme.primary,
+                            rgb: theme.rgb,
+                            wallpaper: wallpaperUrl
+                        }));
+
+                        // Trigger custom event for components
+                        window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme } }));
+                        
+                        // Trigger global profile save
+                        if (typeof window.saveProfile === 'function') {
+                            window.saveProfile(true);
+                        }
+                        
+                        if (window.nexusLog) {
+                            window.nexusLog(`THEME: Protocol ${theme.primary} initialized. Wallpaper updated.`, 'system');
+                        }
+
+                        // 5. Release Overlay after a buffer to prevent flicker
+                        setTimeout(() => {
+                            if (overlay) overlay.classList.remove('active');
+                            window.isApplyingTheme = false;
+                        }, 600);
+                    }, 300);
+                };
+                
+                img.onerror = () => {
+                    if (overlay) overlay.classList.remove('active');
+                    window.isApplyingTheme = false;
+                    window.showNotice('CRITICAL', 'Failed to load visual assets.', 3000, false, true);
+                };
+                
+                img.src = wallpaperUrl;
+            };
+
+            // --- GLOBAL AUTOSAVE SYSTEM ---
+            let globalLastSavedData = "";
+
+            // --- NEXUS TERMINAL LOGGER ---
+            window.nexusLog = function(message, type = 'info') {
+                const terminal = document.getElementById('nexus-terminal-content');
+                if (!terminal) return;
+
+                const now = new Date();
+                const timestamp = `[${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}]`;
+                
+                const logEntry = document.createElement('div');
+                logEntry.style.marginBottom = '5px';
+                logEntry.style.lineHeight = '1.4';
+                
+                let color = 'var(--text-primary)';
+                if (type === 'success') color = '#4ADE80';
+                if (type === 'error') color = '#ff4444';
+                if (type === 'warn') color = '#FF8C42';
+                if (type === 'system') color = 'var(--accent-orange)';
+
+                logEntry.innerHTML = `<span style="color: var(--text-muted); opacity: 0.5; margin-right: 10px;">${timestamp}</span><span style="color: ${color}">${message}</span>`;
+                
+                terminal.appendChild(logEntry);
+                terminal.scrollTop = terminal.scrollHeight;
+
+                // Keep only last 100 logs
+                while (terminal.children.length > 100) {
+                    terminal.removeChild(terminal.firstChild);
+                }
+                
+                // Persist logs for dashboard mounting
+                let logs = JSON.parse(sessionStorage.getItem('nexus_logs') || "[]");
+                logs.push({ timestamp, message, type, color });
+                if (logs.length > 100) logs.shift();
+                sessionStorage.setItem('nexus_logs', JSON.stringify(logs));
+
+                // Send to backend for persistent logging
+                fetch('/api/logs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ timestamp, message, type })
+                }).catch(e => console.error("Logging failed", e));
+            };
+
+            window.saveProfile = function(isAutosave = false) {
+                const nameField = document.getElementById('edit-name');
+                const roleField = document.getElementById('edit-role');
+                const companyField = document.getElementById('edit-company');
+                const emailField = document.getElementById('edit-email');
+
+                let profileData = {};
+                
+                // --- TASK SYNC (Consolidated from main.js) ---
+                if (window.location.pathname === '/tasks') {
+                    if (typeof tasks !== 'undefined' && Array.isArray(tasks)) {
+                        fetch('/api/storage/tasks', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ data: tasks })
+                        }).catch(e => console.error("Task autosave failed", e));
+                    }
+                }
+
+                if (nameField) {
+                    profileData = {
+                        name: nameField.value,
+                        role: roleField.value,
+                        company: companyField.value,
+                        email: emailField.value,
+                        profile_pic: localStorage.getItem('nexus_profile_pic') || "",
+                        theme: JSON.parse(localStorage.getItem('nexus_theme') || "{}")
+                    };
+                } else {
+                    // Sync notice for non-settings pages
+                    fetch('/api/profile').then(r => r.json()).then(data => {
+                        const currentDataStr = JSON.stringify(data);
+                        if (isAutosave && currentDataStr === globalLastSavedData) return;
+                        globalLastSavedData = currentDataStr;
+                        
+                        if (isAutosave) {
+                            window.showNotice('IMCA NEXUS', 'Autosave Complete', 2000, false);
+                            if (window.nexusLog) {
+                                window.nexusLog('AUTOSAVE: System state synchronized to cloud core.', 'success');
+                            }
+                        }
+                    }).catch(err => console.error("Global sync failed:", err));
+                    return;
+                }
+
+                const dataStr = JSON.stringify(profileData);
+                if (isAutosave && dataStr === globalLastSavedData) return;
+                globalLastSavedData = dataStr;
+
+                fetch('/api/profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: dataStr
+                }).then(response => {
+                    if (!response.ok) throw new Error("Server error");
+                    return response.json();
+                }).then(() => {
+                    if (isAutosave) {
+                        window.showNotice('IMCA NEXUS', 'Autosave Complete', 2000, false);
+                        window.nexusLog('AUTOSAVE: System state synchronized to cloud core.', 'success');
+                    } else {
+                        window.showNotice('IMCA NEXUS', 'Profile Saved Successfully', 3000, true);
+                        window.nexusLog('SYSTEM: User profile data updated manually.', 'system');
+                    }
+                }).catch(err => {
+                    console.error("Profile save failed:", err);
+                    window.nexusLog('CRITICAL: Synchronisation failure. Network anomaly detected.', 'error');
+                });
+            };
+
+            setInterval(() => {
+                window.saveProfile(true);
+            }, 20000); // System-wide autosave every 20s
+
+            fsBtn.addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    // Enter Fullscreen
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.log(`Error attempting to enable fullscreen: ${err.message}`);
+                    });
+                    fsIcon.classList.remove('fa-expand');
+                    fsIcon.classList.add('fa-compress');
+                } else {
+                    // Exit Fullscreen
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                        fsIcon.classList.remove('fa-compress');
+                        fsIcon.classList.add('fa-expand');
+                    }
+                }
+            });
+        });
+    </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
