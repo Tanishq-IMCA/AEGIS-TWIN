@@ -173,7 +173,7 @@ def restore_corrupt():
         profile['theme'] = profile.get('theme') or {
             "primary": "#4ADE80",
             "rgb": "74, 222, 128",
-            "wallpaper": "/static/wallpapers/static/141546209_1767704357394.jpeg"
+            "wallpaper": "animated"
         }
         profile.pop('password', None)
         storage_manager.save_profile_data(user_id, profile)
@@ -287,7 +287,7 @@ def api_users():
                 "theme": {
                     "primary": "#4ADE80",
                     "rgb": "74, 222, 128",
-                    "wallpaper": "/static/wallpapers/static/141546209_1767704357394.jpeg"
+                    "wallpaper": "animated"
                 }
             }
             if not auth_database.create_account(username, password):

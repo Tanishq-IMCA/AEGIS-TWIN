@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IMCA NEXUS EXPERIENCE</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dynamic-wallpaper.css') }}">
     <style>
         @font-face {
             font-family: 'Bourgeois';
@@ -41,9 +42,7 @@
         .startup-background {
             position: fixed;
             inset: 0;
-            background-image: url('/static/wallpapers/static/141546209_1767704357394.jpeg');
-            background-size: cover;
-            background-position: center;
+            z-index: 0;
             opacity: 0;
             transition: opacity 2s ease-in-out;
         }
@@ -590,7 +589,12 @@
         </div>
     </div>
     <div id="nexus-notice-container"></div>
-    <div class="startup-background" id="bg"></div>
+    <div class="wallpaper-layer startup-background" id="bg" aria-hidden="true">
+        <div class="blob blob-1"></div><div class="blob blob-2"></div>
+        <div class="blob blob-3"></div><div class="blob blob-4"></div>
+        <div class="blob blob-5"></div><div class="blob blob-6"></div>
+    </div>
+    <div class="wallpaper-shade" aria-hidden="true"></div>
     
     <div class="login-overlay" id="overlay">
         <div style="display: flex; flex-direction: column; align-items: center;">
@@ -819,6 +823,8 @@
                 panelTitle.textContent = 'AUTHENTICATION';
             } else {
                 // Return to welcome screen without refresh
+                setupForm.style.display = 'none';
+                panelTitle.textContent = 'AUTHENTICATION';
                 panel.classList.remove('active');
                 setTimeout(() => {
                     welcome.style.display = 'block';
@@ -826,6 +832,7 @@
                     setTimeout(() => {
                         welcome.classList.remove('fade-out');
                         beginBtn.classList.remove('fade-out');
+                        beginBtn.classList.add('visible');
                     }, 50);
                 }, 1000);
             }

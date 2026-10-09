@@ -8,6 +8,7 @@
     <title>{{ title }}</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dynamic-wallpaper.css') }}">
 
     <style>
         @font-face {
@@ -216,11 +217,7 @@
             padding: 0;
             font-family: var(--font-body);
             background-color: var(--bg-color);
-            background-image: url('/static/wallpapers/static/141546209_1767704357394.jpeg');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
+            background-image: none;
             transition: opacity 0.5s ease-in-out; /* Smooth fade for page load */
             color: var(--text-primary);
             height: 100vh;
@@ -253,6 +250,8 @@
             margin-left: 120px; /* Space from sidebar */
             margin-right: 20px; /* Symmetrical space from right edge */
             padding: 20px;
+            position: relative;
+            z-index: 2;
             height: 100%;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS */
@@ -442,6 +441,12 @@
 </head>
 <body data-username="{{ session.get('user', '') }}">
 
+    <div class="wallpaper-layer" aria-hidden="true">
+        <div class="blob blob-1"></div><div class="blob blob-2"></div>
+        <div class="blob blob-3"></div><div class="blob blob-4"></div>
+        <div class="blob blob-5"></div><div class="blob blob-6"></div>
+    </div>
+    <div class="wallpaper-shade" aria-hidden="true"></div>
     <div id="nexus-transition-overlay" class="transition-overlay"></div>
     
     <div id="nexus-notice-container"></div>
@@ -558,34 +563,23 @@
         checkNewNotifs();
         window.applyTheme = function(theme, wallpaper) {
             const overlay = document.getElementById('nexus-transition-overlay');
-            if (overlay) {
-                overlay.classList.add('active');
-                
-                setTimeout(() => {
-                    document.documentElement.style.setProperty('--accent-orange', theme.primary);
-                    document.documentElement.style.setProperty('--accent-glow', `rgba(${theme.rgb}, 0.5)`);
-                    
-                    // Preload image for smoother switch
-                    const fixedWallpaper = '/static/wallpapers/static/141546209_1767704357394.jpeg';
-                    const img = new Image();
-                    img.src = fixedWallpaper;
-                    img.onload = () => {
-                        document.body.style.backgroundImage = `url('${fixedWallpaper}')`;
-                        localStorage.setItem('nexus_theme', JSON.stringify({...theme, wallpaper: fixedWallpaper}));
-                        
-                        setTimeout(() => {
-                            overlay.classList.remove('active');
-                            overlay.classList.add('fade-out');
-                        }, 300);
-                    };
-                }, 400);
-            } else {
-                // Fallback
+            const apply = () => {
                 document.documentElement.style.setProperty('--accent-orange', theme.primary);
                 document.documentElement.style.setProperty('--accent-glow', `rgba(${theme.rgb}, 0.5)`);
-                const fixedWallpaper = '/static/wallpapers/static/141546209_1767704357394.jpeg';
-                document.body.style.backgroundImage = `url('${fixedWallpaper}')`;
-                localStorage.setItem('nexus_theme', JSON.stringify({...theme, wallpaper: fixedWallpaper}));
+                document.body.style.removeProperty('background-image');
+                localStorage.setItem('nexus_theme', JSON.stringify({...theme, wallpaper: 'animated'}));
+            };
+            if (overlay) {
+                overlay.classList.add('active');
+                setTimeout(() => {
+                    apply();
+                    setTimeout(() => {
+                        overlay.classList.remove('active');
+                        overlay.classList.add('fade-out');
+                    }, 300);
+                }, 400);
+            } else {
+                apply();
             }
         };
 
@@ -595,8 +589,8 @@
                 const theme = JSON.parse(savedTheme);
                 document.documentElement.style.setProperty('--accent-orange', theme.primary);
                 document.documentElement.style.setProperty('--accent-glow', `rgba(${theme.rgb}, 0.5)`);
-                document.body.style.backgroundImage = "url('/static/wallpapers/static/141546209_1767704357394.jpeg')";
-                theme.wallpaper = '/static/wallpapers/static/141546209_1767704357394.jpeg';
+                document.body.style.removeProperty('background-image');
+                theme.wallpaper = 'animated';
                 localStorage.setItem('nexus_theme', JSON.stringify(theme));
             }
             
@@ -606,8 +600,8 @@
                     const theme = data.theme;
                     document.documentElement.style.setProperty('--accent-orange', theme.primary);
                     document.documentElement.style.setProperty('--accent-glow', `rgba(${theme.rgb}, 0.5)`);
-                    document.body.style.backgroundImage = "url('/static/wallpapers/static/141546209_1767704357394.jpeg')";
-                    theme.wallpaper = '/static/wallpapers/static/141546209_1767704357394.jpeg';
+                    document.body.style.removeProperty('background-image');
+                    theme.wallpaper = 'animated';
                     localStorage.setItem('nexus_theme', JSON.stringify(theme));
                 }
             });
@@ -939,53 +933,27 @@
 
                 window.showNotice('IMCA NEXUS', 'Applying Changes. Please Wait...', 2000, false);
 
-                // 2. Pre-load image to ensure seamless swap
-                const fixedWallpaper = '/static/wallpapers/static/141546209_1767704357394.jpeg';
-                const img = new Image();
-                img.onload = () => {
-                    // Small delay to let the overlay blur settle
+                setTimeout(() => {
+                    document.documentElement.style.setProperty('--accent-orange', theme.primary);
+                    document.documentElement.style.setProperty('--accent-glow', `rgba(${theme.rgb}, 0.5)`);
+                    document.body.style.removeProperty('background-image');
+                    localStorage.setItem('nexus_theme', JSON.stringify({
+                        primary: theme.primary,
+                        rgb: theme.rgb,
+                        wallpaper: 'animated'
+                    }));
+
+                    window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme } }));
+                    if (typeof window.saveProfile === 'function') window.saveProfile(true);
+                    if (window.nexusLog) {
+                        window.nexusLog(`THEME: Protocol ${theme.primary} initialized. Wallpaper updated.`, 'system');
+                    }
+
                     setTimeout(() => {
-                        // 3. Apply Variables
-                        document.documentElement.style.setProperty('--accent-orange', theme.primary);
-                        document.documentElement.style.setProperty('--accent-glow', `rgba(${theme.rgb}, 0.5)`);
-                        
-                        // 4. Update Background
-                        document.body.style.backgroundImage = `url('${fixedWallpaper}')`;
-                        
-                        // Persist Theme
-                        localStorage.setItem('nexus_theme', JSON.stringify({
-                            primary: theme.primary,
-                            rgb: theme.rgb,
-                            wallpaper: fixedWallpaper
-                        }));
-
-                        // Trigger custom event for components
-                        window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme } }));
-                        
-                        // Trigger global profile save
-                        if (typeof window.saveProfile === 'function') {
-                            window.saveProfile(true);
-                        }
-                        
-                        if (window.nexusLog) {
-                            window.nexusLog(`THEME: Protocol ${theme.primary} initialized. Wallpaper updated.`, 'system');
-                        }
-
-                        // 5. Release Overlay after a buffer to prevent flicker
-                        setTimeout(() => {
-                            if (overlay) overlay.classList.remove('active');
-                            window.isApplyingTheme = false;
-                        }, 600);
-                    }, 300);
-                };
-                
-                img.onerror = () => {
-                    if (overlay) overlay.classList.remove('active');
-                    window.isApplyingTheme = false;
-                    window.showNotice('CRITICAL', 'Failed to load visual assets.', 3000, false, true);
-                };
-                
-                img.src = fixedWallpaper;
+                        if (overlay) overlay.classList.remove('active');
+                        window.isApplyingTheme = false;
+                    }, 600);
+                }, 300);
             };
 
             // --- GLOBAL AUTOSAVE SYSTEM ---
