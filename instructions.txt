@@ -1,0 +1,77 @@
+Okay. So the idea of this project is to essentially have A main dashboard to begin with Which is the homepage? Currently we have the software which says imc and Nexus dashboard. I want you to change that to Our current software Name. which is AEGIS TWIN
+
+We also have a little notification pop up that happens every now and then, like an alert It comes in the top Left corner of our screen. It happens whenever we change the themes. It happens whenever it auto saves. So we are going to be using that notification section That little pop up section that we have. Not the bell icon, by the way, not that box. The other one that pops in and out, like a smooth animation That one the alerts animation or whatever. We're going to be using that to deliver all the updates. When it comes to delivering updates Which we are immediately doing something like assigning task, whatever to A semi truck for semi truck. 321 whatever. And let's not use the semi truck. Word let's use something better. Something like Something modern you know That we would use Something like dispatch or something. I don't know, something very, very modern. Anyways, we need to have a big map Remove the total balance earnings expenses from the main dashboard. Remove my Name as well Like remove that card as well. Or maybe let's not Let's keep that card Saved off for later, but just remove it for now from the dashboard Also remove visa. Also remove operational efficiency and system integrity. Remove all that stuff for now. I want you Basically have a huge map Okay. And I did some research online, and they said that Uber is providing free map Or free system, which we can use. To trace over the roads and show the whole trucks going from one point to another For now, let's keep A system where the trucks leave from Point A and then go to their point B, which is essentially. The destination of the dispatch. So Point A would be, obviously, the warehouse where the trucks leave from. I want it to The line its on. Like show a blue line. On the roads that it has travelled. And then anything that's further, which is not travelled or remaining Should be marked as dotted grey line?. Remove the stuff financial page and keep a single window like we have in calendar page. where it says module under development.
+
+also rename the page of financial and dashboard to... Manifest
+
+where we can see the tasks. refer to ppt document for how we need this done.
+
+for now implement those functions in these things.
+
+use map of seattle.
+
+if u can.
+
+find like 2 warehouses to call our own and set 20 destinations that it can pick over the whole city .
+
+make should be zoomable but fixed to the point where we cant zoom completely out of seattle as it starts including other things in th emap.
+
+we should be able to drag and move around.. the map to see things clearer.
+
+trucks which are active should be shown as green.
+
+yellow as slowed down..
+
+red as broken down / need assistance.
+
+make sure texts have that existing glimmer/ shine animation running acorss them. like they do already. make sure that isnt broken..
+
+as for uber api.. idk what to do.
+
+btw for ai also refer to the ppt.
+
+dont refer to ppt too much.
+
+refer as much as we need to add functionality here.
+
+make it quick.
+
+before starting always make phases.
+
+each phase is per page we have in dashboard.
+
+btw yk what js rename the tasks page to manifest page rather than changing the financial.
+
+also lets change financial page and icon to something that matches the page whcih shows adjustment of how many available trailers we got.
+
+remembers all these trucks have a max speed of idk.. anywhere between 50-120
+
+make it dynamic btw so they arent always on a single random speed. 60% chance of them being on 50 which moves the dot slow as fuck but not too slow. js realistically on the map w that speed. ofc slow down at turns / corners. like 30 or sum then ramp back up to existing speed then up randomly or somewhat realistically.
+
+30% chance of speed ramping upto 90 and 10% of 120 if its like a freeway idk.
+
+if the uber shit dosent work.
+
+lmk and use sum else.
+
+first we talk.
+
+also show the finished deliveries in glassy panel in glassy cards.
+
+as they are finished.
+
+use the same "|" line we are using in imca nexus link indicator and the ones we using in alert. same relfection aand all btw.
+
+show it like this.
+
+SUCCESS | DISPATCHED FROM (LOC 1) TO (LOC 2) and arrived in (total time taken to arrive)
+
+Right under that card.
+
+a extremely slim br line.. very thin. barely seen almost.
+
+and under that say The delivery was ___ mins late / on time/ ___ mins early.
+
+leave settings as is.
+
+hovering over moving dots would show current speed. shipment. etc etc
