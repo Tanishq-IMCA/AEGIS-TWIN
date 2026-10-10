@@ -1,5 +1,10 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import psutil
 import os
+import secrets
 import requests
 import logging
 import relay_manager
@@ -11,11 +16,15 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 import storage_manager
 import auth_database
 import difflib
+import dispatch_engine
 
 app = Flask(__name__)
 session_secret = os.environ.get('SESSION_SECRET')
 if not session_secret:
-    raise RuntimeError("SESSION_SECRET must be configured.")
+    if os.environ.get("REPL_ID") or os.environ.get("REPLIT_ENVIRONMENT"):
+        raise RuntimeError("SESSION_SECRET must be configured.")
+    session_secret = secrets.token_urlsafe(32)
+    app.logger.warning("Using a temporary development session secret.")
 app.config.update(
     SESSION_COOKIE_SAMESITE='Lax',
     SESSION_COOKIE_SECURE=False,  # Replit proxy handles SSL
@@ -704,6 +713,55 @@ def tasks():
 def calendar():
     return render_template('calendar.html', title="Temporal Logistics")
 
+@app.route('/control-panel')
+def control_panel():
+    return render_template('control_panel.html', title="Dispatch Control Panel")
+
+@app.route('/api/dispatch', methods=['GET', 'POST'])
+def dispatch_api():
+    username = get_current_user()
+    try:
+        if request.method == 'POST':
+            payload = request.get_json(silent=True) or {}
+            dispatch = dispatch_engine.create_dispatch(
+                username,
+                payload.get('origin_id'),
+                payload.get('destination_id'),
+            )
+            return jsonify({"dispatch": dispatch}), 201
+
+        if request.args.get("catalog") == "1":
+            return jsonify({"catalog": dispatch_engine.catalog()})
+        state, new_incidents = dispatch_engine.get_state(username)
+        return jsonify({**state, "new_incidents": new_incidents})
+    except (KeyError, ValueError) as error:
+        return jsonify({"error": str(error)}), 400
+    except Exception as error:
+        app.logger.exception("DISPATCH API ERROR")
+        return jsonify({"error": "Dispatch control is temporarily unavailable."}), 500
+
+@app.route('/api/dispatch/<dispatch_id>/assistance', methods=['POST'])
+def dispatch_assistance(dispatch_id):
+    try:
+        dispatch = dispatch_engine.request_assistance(get_current_user(), dispatch_id)
+        return jsonify({"dispatch": dispatch})
+    except (KeyError, ValueError) as error:
+        return jsonify({"error": str(error)}), 400
+    except Exception:
+        app.logger.exception("ROADSIDE ASSISTANCE ERROR")
+        return jsonify({"error": "Could not request roadside assistance."}), 500
+
+@app.route('/api/dispatch/<dispatch_id>/resume', methods=['POST'])
+def resume_dispatch(dispatch_id):
+    try:
+        dispatch = dispatch_engine.resume_dispatch(get_current_user(), dispatch_id)
+        return jsonify({"dispatch": dispatch})
+    except (KeyError, ValueError) as error:
+        return jsonify({"error": str(error)}), 400
+    except Exception:
+        app.logger.exception("DISPATCH RESUME ERROR")
+        return jsonify({"error": "Could not resume this dispatch."}), 500
+
 @app.route('/api/relay/discovery')
 def discovery():
     if not relay_service.active:
@@ -852,4 +910,9 @@ def get_messages(target_user):
         return jsonify([]), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(
+        host=os.environ.get("HOST", "0.0.0.0"),
+        port=int(os.environ.get("PORT", "5000")),
+        debug=os.environ.get("FLASK_DEBUG", "").lower() in {"1", "true", "yes"},
+        use_reloader=False,
+    )

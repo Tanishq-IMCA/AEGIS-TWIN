@@ -6,3 +6,4 @@ venv/
 .env
 data/users/
 data/user_data/
+data/local_auth.sqlite3
