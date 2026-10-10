@@ -92,5 +92,6 @@
     </div>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>window.CARTO_BASEMAPS_KEY = {{ carto_api_key|tojson }};</script>
 <script src="{{ url_for('static', filename='dispatch-console.js') }}"></script>
 {% endblock %}

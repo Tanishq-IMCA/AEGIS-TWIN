@@ -18,11 +18,17 @@
     let snapshot = { active: [], completed: [], cancelled: [] };
 
     if (map) {
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+        const cartoKey = window.CARTO_BASEMAPS_KEY || '';
+        const tileUrl = `https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png${cartoKey ? `?key=${encodeURIComponent(cartoKey)}` : ''}`;
+        L.tileLayer(tileUrl, {
             subdomains: 'abcd',
             maxZoom: 19,
             attribution: '&copy; OpenStreetMap &copy; CARTO'
         }).addTo(map);
+        if (!cartoKey) {
+            const caption = document.getElementById('map-caption');
+            if (caption) caption.textContent = 'CARTO KEY REQUIRED · ADD CARTO_BASEMAPS_API_KEY IN REPLIT SECRETS';
+        }
     } else if (mapNode) {
         mapNode.innerHTML = '<div class="empty-state">Map tiles are unavailable. Check the network connection.</div>';
     }
@@ -205,7 +211,7 @@
         const live = document.getElementById('live-state');
         if (live) live.textContent = `${snapshot.active.length} ACTIVE`;
         const caption = document.getElementById('map-caption');
-        if (caption) caption.textContent = snapshot.active.length
+        if (caption && window.CARTO_BASEMAPS_KEY) caption.textContent = snapshot.active.length
             ? 'SEATTLE OPERATIONS · SELECT A TRUCK TO VIEW ITS ROAD ROUTE'
             : 'SEATTLE OPERATIONS · NO ACTIVE DISPATCHES';
         renderList();

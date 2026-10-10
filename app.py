@@ -590,7 +590,11 @@ def logout_action():
 
 @app.route('/')
 def dashboard():
-    return render_template('dashboard.html', title="AEGIS TWIN")
+    return render_template(
+        'dashboard.html',
+        title="AEGIS TWIN",
+        carto_api_key=os.environ.get("CARTO_BASEMAPS_API_KEY", ""),
+    )
 
 @app.route('/api/profile', methods=['GET'])
 def get_profile():
