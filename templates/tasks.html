@@ -355,30 +355,7 @@
     }
 </style>
 
-    <div style="margin-bottom: 30px; display: flex; flex-direction: column; gap: 0;">
-        <div style="display: flex; justify-content: space-between; align-items: baseline;">
-            <div class="title-underline-wrapper">
-                <h1 class="page-title">
-                    MANIFEST
-                </h1>
-                <div class="themed-wave-line" style="width: 100%;"></div>
-            </div>
-
-            <div style="display: flex; align-items: center; gap: 15px; width: 500px; justify-content: flex-end;">
-                <div id="live-day" style="font-family: var(--font-title); font-size: 1.5rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px; width: 160px; text-align: right;">MONDAY</div>
-                <span style="color: var(--accent-orange); font-size: 1.5rem; font-family: var(--font-title); width: 30px; text-align: center;">||</span>
-                <div id="live-clock" style="font-family: var(--font-body); font-size: 2rem; letter-spacing: 2px; display: flex; align-items: center; gap: 0px; color: var(--text-primary); width: 280px; justify-content: flex-start; font-variant-numeric: tabular-nums;">
-                    <span id="hour-node" style="display: inline-block; min-width: 2ch; text-align: center;">12</span>
-                    <span class="blink-colon" style="display: inline-block; width: 1ch; text-align: center;">:</span>
-                    <span id="min-node" style="display: inline-block; width: 2ch; text-align: center;">00</span>
-                    <span class="blink-colon" style="display: inline-block; width: 1ch; text-align: center;">:</span>
-                    <span id="sec-node" style="display: inline-block; width: 2ch; text-align: center;">00</span>
-                    <span id="ms-node" style="display: inline-block; width: 3ch; font-size: 1rem; color: var(--accent-orange); align-self: flex-end; margin-bottom: 4px; opacity: 0.8; text-shadow: 0 0 10px var(--accent-orange);">.00</span>
-                    <span id="ampm-node" style="margin-left: 15px; font-size: 2rem; color: var(--accent-orange); min-width: 3ch; text-align: left;">AM</span>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% include "_page_header.html" %}
 
 <div class="panel-overlay" id="panel-overlay" onclick="closePanel()"></div>
 <div class="property-panel" id="property-panel">

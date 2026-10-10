@@ -592,7 +592,7 @@ def logout_action():
 def dashboard():
     return render_template(
         'dashboard.html',
-        title="AEGIS TWIN",
+        title="IMCA NEXUS DASHBOARD",
         carto_api_key=os.environ.get("CARTO_BASEMAPS_API_KEY", ""),
     )
 

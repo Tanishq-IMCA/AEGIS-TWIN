@@ -6,7 +6,6 @@
 <style>
     .control-page { min-height:calc(100vh - 50px); max-width:950px; margin:0 auto; color:#dce2e7; }
     .control-heading { display:flex; justify-content:space-between; align-items:end; margin-bottom:16px; }
-    .control-heading h1 { margin:0; font:500 1.25rem var(--font-title); letter-spacing:1.8px; }
     .control-heading p { margin:5px 0 0; color:#7f8991; font-size:.67rem; }
     .control-page .status-panel { min-height:65vh; }
     .control-page .dispatch-list { padding-top:8px; }
@@ -17,8 +16,9 @@
     .control-page .dispatch-form { grid-template-columns:1fr 1.4fr auto; }
 </style>
 <main class="control-page">
+    {% include "_page_header.html" %}
     <header class="control-heading">
-        <div><h1>CONTROL PANEL</h1><p>Dispatch assignment and roadside response.</p></div>
+        <p>Dispatch assignment and roadside response.</p>
         <span class="ops-location" id="live-state">CONNECTING</span>
     </header>
     <section class="status-panel">

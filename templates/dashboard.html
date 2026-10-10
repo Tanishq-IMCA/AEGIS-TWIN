@@ -5,10 +5,6 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='dispatch-console.css') }}">
 <style>
     .ops-page { height: calc(100vh - 28px); min-height: 560px; display:flex; flex-direction:column; gap:12px; }
-    .ops-header { display:flex; align-items:center; justify-content:space-between; min-height:42px; }
-    .ops-brand { color:#dce2e7; font:500 1.28rem var(--font-title); letter-spacing:2.3px; position:relative; }
-    .ops-brand::after { content:"AEGIS TWIN"; position:absolute; inset:0; color:transparent; background:linear-gradient(105deg,transparent 48%,#fff 50%,transparent 52%); background-size:260% 100%; background-clip:text; -webkit-background-clip:text; animation:ops-shine 12s linear infinite; pointer-events:none; }
-    @keyframes ops-shine { from { background-position:220% 0; } to { background-position:-120% 0; } }
     .ops-location { color:#8a949e; font: .62rem var(--font-title); letter-spacing:1.5px; }
     .ops-layout { flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,7fr) minmax(310px,3fr); gap:12px; }
     .map-frame,.status-panel { border:1px solid rgba(255,255,255,.09); border-radius:13px; background:#0b0f13; overflow:hidden; }
@@ -17,14 +13,14 @@
     .map-caption { position:absolute; z-index:500; bottom:12px; left:12px; background:rgba(8,12,16,.9); border:1px solid rgba(255,255,255,.09); border-radius:7px; padding:7px 9px; color:#a5afb8; font: .57rem var(--font-title); letter-spacing:.7px; }
     .status-panel { display:flex; flex-direction:column; min-height:0; }
     .panel-top { padding:13px 14px 10px; border-bottom:1px solid rgba(255,255,255,.07); }
-    .panel-title { color:#e0e5e9; font: .72rem var(--font-title); letter-spacing:1.25px; }
-    .panel-subtitle { color:#77828b; font-size:.62rem; margin-top:4px; }
+    .panel-title { color:#e0e5e9; font: .98rem var(--font-title); letter-spacing:1px; }
+    .panel-subtitle { color:#9aa4ac; font-size:.78rem; margin-top:5px; }
     .status-tabs { display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:10px 12px; }
-    .status-tab { display:flex; justify-content:space-between; gap:5px; border:1px solid rgba(255,255,255,.08); border-radius:7px; background:#10151a; color:#9da7af; padding:8px 9px; cursor:pointer; font: .58rem var(--font-title); letter-spacing:.5px; }
+    .status-tab { display:flex; justify-content:space-between; gap:5px; border:1px solid rgba(255,255,255,.08); border-radius:7px; background:#10151a; color:#b6c0c7; padding:9px; cursor:pointer; font: .72rem var(--font-title); letter-spacing:.35px; }
     .status-tab.active { border-color:rgba(255,255,255,.2); color:#edf1f3; background:#171d22; }
-    .status-count { color:#e4e9ed; font-variant-numeric:tabular-nums; }
+    .status-count { color:#e4e9ed; font: .8rem var(--font-title); font-variant-numeric:tabular-nums; }
     .dispatch-form { display:grid; grid-template-columns:1fr 1.2fr auto; gap:6px; padding:0 12px 10px; }
-    .dispatch-form select,.dispatch-form button { min-width:0; height:31px; border:1px solid rgba(255,255,255,.1); border-radius:6px; background:#11171c; color:#d8dee3; padding:0 7px; font: .57rem var(--font-title); }
+    .dispatch-form select,.dispatch-form button { min-width:0; height:36px; border:1px solid rgba(255,255,255,.1); border-radius:6px; background:#11171c; color:#d8dee3; padding:0 8px; font: .72rem var(--font-title); }
     .dispatch-form select option { color:#111; }
     .dispatch-form button { background:#e6eaed; color:#101419; border-color:#e6eaed; padding:0 10px; cursor:pointer; }
     .dispatch-list { flex:1; min-height:0; overflow-y:auto; padding:0 10px 10px; display:flex; flex-direction:column; gap:6px; }
@@ -34,21 +30,21 @@
     .dispatch-card.cancelled { border-left-color:#737e87; }
     .dispatch-card.selected { background:#171d22; border-color:rgba(255,255,255,.16); }
     .dispatch-row { display:flex; justify-content:space-between; align-items:center; gap:8px; }
-    .dispatch-truck { color:#e0e5e9; font: .62rem var(--font-title); letter-spacing:.6px; }
-    .dispatch-state { color:#86c9a7; font: .51rem var(--font-title); letter-spacing:.55px; }
+    .dispatch-truck { color:#e0e5e9; font: .82rem var(--font-title); letter-spacing:.5px; }
+    .dispatch-state { color:#86c9a7; font: .68rem var(--font-title); letter-spacing:.4px; }
     .slowed .dispatch-state { color:#d2bd76; }
     .needs_assistance .dispatch-state,.assistance_requested .dispatch-state { color:#d7898e; }
-    .dispatch-destination { color:#9da7af; font-size:.61rem; margin-top:5px; }
-    .dispatch-details { display:flex; justify-content:space-between; color:#727e87; font: .54rem var(--font-title); margin-top:6px; }
+    .dispatch-destination { color:#b1bac1; font-size:.78rem; margin-top:6px; }
+    .dispatch-details { display:flex; justify-content:space-between; gap:5px; color:#8f9aa3; font: .7rem var(--font-title); margin-top:7px; }
     .dispatch-actions { display:flex; gap:5px; margin-top:7px; }
-    .dispatch-action { border:1px solid rgba(255,255,255,.13); border-radius:5px; background:transparent; color:#c8d0d5; padding:4px 7px; cursor:pointer; font: .52rem var(--font-title); }
+    .dispatch-action { border:1px solid rgba(255,255,255,.13); border-radius:5px; background:transparent; color:#c8d0d5; padding:6px 8px; cursor:pointer; font: .68rem var(--font-title); }
     .dispatch-action.help { border-color:rgba(210,137,142,.35); color:#d7898e; }
     .dispatch-action.cancel { color:#8b949b; }
     .dispatch-action.resume { color:#91cbaa; }
-    .success-card { background:#11171b; border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:9px 10px; color:#d3d9de; font-size:.6rem; line-height:1.45; }
-    .success-line { color:#9bcdb0; font: .54rem var(--font-title); letter-spacing:.45px; }
+    .success-card { background:#11171b; border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:10px; color:#d3d9de; font-size:.75rem; line-height:1.5; }
+    .success-line { color:#9bcdb0; font: .68rem var(--font-title); letter-spacing:.35px; }
     .success-card hr { border:0; border-top:1px solid rgba(255,255,255,.07); margin:6px 0; }
-    .empty-state { color:#73808a; text-align:center; padding:24px 8px; font-size:.63rem; }
+    .empty-state { color:#8b969e; text-align:center; padding:24px 8px; font-size:.78rem; }
     .leaflet-container { background:#10151a; font-family:var(--font-body); }
     .leaflet-control-zoom a { background:#11171c!important; color:#d5dce1!important; border-color:#303940!important; }
     .leaflet-control-attribution { background:rgba(8,12,16,.65)!important; color:#77828b!important; font-size:9px!important; }
@@ -65,10 +61,7 @@
 </style>
 
 <main class="ops-page">
-    <header class="ops-header">
-        <div class="ops-brand">AEGIS TWIN</div>
-        <div class="ops-location">SEATTLE · LIVE OPERATIONS</div>
-    </header>
+    {% include "_page_header.html" %}
     <div class="ops-layout">
         <section class="map-frame">
             <div id="dispatch-map" aria-label="Seattle live truck map"></div>

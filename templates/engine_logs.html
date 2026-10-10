@@ -4,7 +4,6 @@
 <style>
     .logs-page { height:calc(100vh - 50px); min-height:520px; max-width:1100px; margin:0 auto; display:flex; flex-direction:column; color:#dce2e7; }
     .logs-header { display:flex; justify-content:space-between; align-items:end; gap:12px; margin-bottom:12px; }
-    .logs-header h1 { margin:0; font:500 1.2rem var(--font-title); letter-spacing:1.7px; }
     .logs-header p { margin:5px 0 0; color:#7e8991; font-size:.65rem; }
     .logs-filter { min-width:210px; height:31px; border:1px solid rgba(255,255,255,.12); border-radius:6px; background:#10151a; color:#dce2e7; padding:0 9px; }
     .logs-feed { flex:1; overflow:auto; border:1px solid rgba(255,255,255,.08); border-radius:10px; background:#090d10; padding:7px 12px; font: .67rem ui-monospace,SFMono-Regular,Menlo,monospace; }
@@ -19,8 +18,9 @@
     @media(max-width:760px) { .logs-page { height:auto; min-height:75vh; } .log-entry { grid-template-columns:1fr 55px; gap:4px 8px; } .log-event,.log-message { grid-column:1/-1; } .logs-header { align-items:stretch; flex-direction:column; } .logs-filter { width:100%; } }
 </style>
 <main class="logs-page">
+    {% include "_page_header.html" %}
     <header class="logs-header">
-        <div><h1>ENGINE LOGS</h1><p>LIVE EVENT STREAM · UTC TIMESTAMPS TO MILLISECOND PRECISION</p></div>
+        <p>LIVE EVENT STREAM · UTC TIMESTAMPS TO MILLISECOND PRECISION</p>
         <input class="logs-filter" id="log-filter" placeholder="Filter events…" aria-label="Filter engine logs">
     </header>
     <div class="logs-feed" id="logs-feed"><div class="logs-empty">Connecting to the engine…</div></div>

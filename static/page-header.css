@@ -1,0 +1,85 @@
+.nexus-page-header {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:18px;
+    width:100%;
+    margin:0 0 22px;
+    flex-shrink:0;
+}
+.nexus-heading-wrap {
+    display:inline-flex;
+    flex-direction:column;
+    align-items:flex-start;
+    width:fit-content;
+    max-width:100%;
+}
+.nexus-page-title {
+    position:relative;
+    display:inline-block;
+    width:fit-content;
+    max-width:100%;
+    margin:0;
+    color:rgba(211,211,211,.65);
+    font:400 2rem/1.12 var(--font-title,'Bourgeois',sans-serif);
+    letter-spacing:1px;
+    text-transform:uppercase;
+    white-space:nowrap;
+}
+.nexus-page-title::after {
+    content:attr(data-title);
+    position:absolute;
+    inset:0;
+    color:transparent;
+    background:linear-gradient(110deg,transparent 49%,#fff 50%,transparent 51%);
+    background-size:300% 100%;
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+    animation:nexus-title-shine 12s linear infinite;
+    pointer-events:none;
+}
+.nexus-page-line {
+    position:relative;
+    width:100%;
+    height:4px;
+    margin-top:4px;
+    overflow:hidden;
+    border-radius:2px;
+    background:var(--accent-orange,#4ADE80);
+    box-shadow:0 0 15px var(--accent-glow,rgba(74,222,128,.5));
+}
+.nexus-page-line::after {
+    content:"";
+    position:absolute;
+    inset:0;
+    background:linear-gradient(110deg,transparent 40%,rgba(255,255,255,1) 50%,transparent 60%);
+    animation:nexus-line-shine 12s linear infinite;
+}
+.nexus-header-clock {
+    display:flex;
+    align-items:baseline;
+    justify-content:flex-end;
+    gap:11px;
+    color:var(--text-muted,#e0e0e0);
+    font-family:var(--font-title,'Bourgeois',sans-serif);
+    white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+}
+.nexus-clock-day {
+    font-size:1rem;
+    letter-spacing:1.4px;
+    text-transform:uppercase;
+}
+.nexus-clock-divider { color:var(--accent-orange,#4ADE80); font-size:1.15rem; }
+.nexus-clock-time { color:var(--text-primary,#fff); font-size:1.35rem; letter-spacing:1.4px; }
+.nexus-clock-ms { color:var(--accent-orange,#4ADE80); font-size:.78rem; }
+@keyframes nexus-title-shine { from { background-position:250% 0; } to { background-position:-150% 0; } }
+@keyframes nexus-line-shine { from { transform:translateX(-150%); } to { transform:translateX(150%); } }
+@media(max-width:720px) {
+    .nexus-page-header { align-items:flex-start; flex-direction:column; gap:8px; margin-bottom:16px; }
+    .nexus-page-title { font-size:1.55rem; white-space:normal; }
+    .nexus-clock-day { font-size:.76rem; }
+    .nexus-clock-time { font-size:1.05rem; }
+    .nexus-clock-divider { font-size:.9rem; }
+}

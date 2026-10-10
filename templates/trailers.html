@@ -4,7 +4,6 @@
 <style>
     .trailers-page { max-width:980px; margin:0 auto; color:#dce2e7; }
     .trailers-header { display:flex; justify-content:space-between; align-items:end; margin-bottom:16px; }
-    .trailers-header h1 { margin:0; font:500 1.25rem var(--font-title); letter-spacing:1.8px; }
     .trailers-header p { margin:5px 0 0; color:#7e8991; font-size:.66rem; }
     .trailer-counts { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
     .trailer-count { background:#0e1317; border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:12px; }
@@ -35,7 +34,8 @@
     }
 </style>
 <main class="trailers-page">
-    <header class="trailers-header"><div><h1>TRAILER AVAILABILITY</h1><p>SEATTLE HUBS · ASSIGNMENT READINESS</p></div></header>
+    {% include "_page_header.html" %}
+    <header class="trailers-header"><p>SEATTLE HUBS · ASSIGNMENT READINESS</p></header>
     <section class="trailer-counts">
         <div class="trailer-count"><span>AVAILABLE</span><strong id="count-available">0</strong></div>
         <div class="trailer-count"><span>ASSIGNED</span><strong id="count-assigned">0</strong></div>

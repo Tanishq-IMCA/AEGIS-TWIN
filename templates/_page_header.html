@@ -1,0 +1,30 @@
+<link rel="stylesheet" href="{{ url_for('static', filename='page-header.css') }}">
+<header class="nexus-page-header">
+    <div class="nexus-heading-wrap">
+        <h1 class="nexus-page-title" data-title="{{ title|default('IMCA NEXUS')|upper }}">{{ title|default('IMCA NEXUS')|upper }}</h1>
+        <div class="nexus-page-line"></div>
+    </div>
+    <div class="nexus-header-clock" aria-label="Live local time">
+        <span class="nexus-clock-day" data-nexus-clock-day>---</span>
+        <span class="nexus-clock-divider">||</span>
+        <time class="nexus-clock-time" data-nexus-clock-time>00:00:00</time>
+        <span class="nexus-clock-ms" data-nexus-clock-ms>.00</span>
+    </div>
+</header>
+<script>
+(() => {
+    const day = document.querySelector('[data-nexus-clock-day]');
+    const time = document.querySelector('[data-nexus-clock-time]');
+    const ms = document.querySelector('[data-nexus-clock-ms]');
+    const tick = () => {
+        const now = new Date();
+        if (day) day.textContent = now.toLocaleDateString(undefined, { weekday: 'long' }).toUpperCase();
+        if (time) time.textContent = now.toLocaleTimeString(undefined, {
+            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+        });
+        if (ms) ms.textContent = `.${String(Math.floor(now.getMilliseconds() / 10)).padStart(2, '0')}`;
+    };
+    tick();
+    setInterval(tick, 100);
+})();
+</script>

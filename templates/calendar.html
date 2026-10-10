@@ -72,19 +72,13 @@
     }
 </style>
 
-<div style="height: 100%; display: flex; align-items: center; justify-content: center;">
+{% include "_page_header.html" %}
+<div style="min-height: calc(100vh - 190px); display: flex; align-items: center; justify-content: center;">
 
     <div class="glass-panel" style="text-align: center; padding: 60px; max-width: 500px;">
 
         <div style="font-size: 3rem; color: var(--accent-orange); margin-bottom: 20px;">
             <i class="fa-solid fa-screwdriver-wrench"></i>
-        </div>
-
-        <div class="title-underline-wrapper" style="margin-left: auto; margin-right: auto; margin-bottom: 15px;">
-            <h1 class="dev-page-title">
-                {{ title }}
-            </h1>
-            <div class="themed-wave-line"></div>
         </div>
 
         <p class="label" style="font-size: 1.2rem !important;">
