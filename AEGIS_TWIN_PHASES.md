@@ -1,5 +1,39 @@
 # AEGIS TWIN — Page-by-page build plan
 
+## Progress checklist
+
+### Phase 1 — Main dashboard
+- [x] Rename the landing page to AEGIS TWIN and remove the finance/profile/system-health cards.
+- [x] Put the Seattle map on the landing page, with a 70/30 map-to-status-panel layout.
+- [x] Use dark, low-clutter tiles, Seattle zoom bounds, pan/zoom, and road-following OSRM routes.
+- [x] Make truck markers prominent; show one selected truck's travelled/remaining road path and hover details.
+- [x] Add Finished, Ongoing, Needs Attention, and Cancelled status views.
+- [x] Support dispatch creation, cancellation, roadside requests, and route resume from the dashboard.
+- [x] Use the existing animated notice popup for arrivals, slowdown, and incident updates without blurring the page.
+
+### Phase 2 — Control Panel
+- [x] Keep a dedicated no-map dispatch response page with roadside assistance and resume actions.
+
+### Phase 3 — Manifest
+- [x] Rename the Tasks navigation entry and page heading to Manifest.
+- [ ] Link manifest items to dispatches, destinations, and due times.
+
+### Phase 4 — Trailer Availability
+- [x] Replace the finance placeholder with per-hub trailer counts and add/status/remove controls.
+
+### Phase 5 — Calendar
+- [ ] Add pickup/arrival windows and maintenance dates linked to manifests or trucks.
+
+### Phase 6 — Settings
+- [x] Preserve Settings without changes.
+
+### Phase 7 — Engine Logs
+- [x] Add a live, filterable engine feed with UTC timestamps to millisecond precision.
+- [x] Log dispatch, movement, slowdown, delivery, roadside, resume, and cancellation events.
+
+### Phase 8 — Local run
+- [x] Allow PyCharm runs to load `.env`, use a local SQLite login store, and honor `HOST`, `PORT`, and `FLASK_DEBUG`.
+
 ## Product direction
 
 AEGIS TWIN is an operations orchestrator: dispatch work, see truck progress, respond to exceptions, and keep delivery and trailer information in one place. Keep the first release small and operator-focused. Do not add a general finance, social, or AI feature unless it directly reduces dispatch work.
@@ -17,7 +51,7 @@ AEGIS TWIN is an operations orchestrator: dispatch work, see truck progress, res
 
 **Acceptance:** The first screen answers “what is moving, what is blocked, and what just arrived?” without scrolling.
 
-## Phase 2 — Control Panel / Dispatch response (implemented in this pass)
+## Phase 2 — Control Panel / Dispatch response
 
 **Goal:** Create and monitor a dispatch, then handle a disabled truck.
 
@@ -30,7 +64,7 @@ AEGIS TWIN is an operations orchestrator: dispatch work, see truck progress, res
 - Keep completed deliveries in glass cards with the dispatch, origin/destination, total time, and early/on-time/late result.
 - Emit concise animated notices for dispatch creation, incidents, assistance, and resume actions.
 
-**Acceptance:** A trip is persisted per account, progresses on refresh, produces no more than its one assigned incident, and can be resumed after assistance. The initial routes are a lightweight Seattle road-corridor simulation, not turn-by-turn navigation.
+**Acceptance:** A trip is persisted per account, progresses on refresh, produces no more than its one assigned incident, and can be resumed after assistance. OSRM supplies the road geometry; tile and routing availability still depend on their public endpoints.
 
 ## Phase 3 — Tasks → Manifest
 
@@ -87,7 +121,7 @@ AEGIS TWIN is an operations orchestrator: dispatch work, see truck progress, res
 
 ## Map provider recommendation
 
-Do not use Uber Maps for the first release. Use **Leaflet + OpenStreetMap** tiles: no Uber key or billing integration is needed for this prototype, and the map can be panned and zoomed inside Seattle bounds. Keep attribution visible. The first Control Panel uses fixed Seattle road-corridor paths so it works without a routing API. For real turn-by-turn road geometry and traffic-aware ETAs, evaluate OSRM or a commercial routing provider later; verify its service terms and reliability before production use. The current 5% incident is a simulation event, not a real accident feed or emergency-service call.
+Do not use Uber Maps for this prototype. Use **Leaflet + CARTO dark tiles** with OpenStreetMap attribution and **OSRM** for Seattle road geometry. No Uber key is needed; the map stays inside Seattle bounds. The public routing and tile endpoints are suitable for prototyping, not a production service-level guarantee. Review provider terms and reliability before rollout. The current 5% incident is simulated, not a real accident feed or emergency-service call.
 
 ## Small-feature recommendations for otherwise empty pages
 

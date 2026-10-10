@@ -1,271 +1,40 @@
 {% extends "base.html" %}
 
 {% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='dispatch-console.css') }}">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <style>
-    .control-shell { height: calc(100vh - 34px); min-height: 620px; display: flex; flex-direction: column; gap: 14px; }
-    .control-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; }
-    .control-heading h1 { margin: 0; font: 400 1.7rem var(--font-title); letter-spacing: 2px; color: rgba(225,232,236,.78); }
-    .control-subtitle { color: var(--text-muted); font: .7rem var(--font-title); letter-spacing: 1.5px; margin-top: 7px; }
-    .control-grid { min-height: 0; flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; }
-    .map-card, .control-panel-card { min-height: 0; background: rgba(10,17,23,.58); border: 1px solid var(--glass-border); border-radius: 18px; backdrop-filter: var(--glass-blur); overflow: hidden; }
-    .map-card { position: relative; }
-    #dispatch-map { height: 100%; min-height: 460px; background: #101a20; }
-    .map-legend { position: absolute; bottom: 14px; left: 14px; z-index: 500; display: flex; flex-wrap: wrap; gap: 12px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(7,13,18,.86); color: #d9e2e8; font: .64rem var(--font-title); letter-spacing: .8px; }
-    .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
-    .control-panel-card { display: flex; flex-direction: column; }
-    .panel-head { padding: 17px; border-bottom: 1px solid rgba(255,255,255,.08); }
-    .panel-head h2, .deliveries h2 { margin: 0; font: .82rem var(--font-title); letter-spacing: 1.5px; color: var(--text-primary); }
-    .panel-head p { margin: 6px 0 0; color: var(--text-muted); font-size: .68rem; }
-    .dispatch-form { padding: 12px 14px; display: grid; gap: 9px; border-bottom: 1px solid rgba(255,255,255,.07); }
-    .dispatch-form select, .dispatch-form button, .action-button { width: 100%; min-height: 36px; border: 1px solid rgba(255,255,255,.13); border-radius: 9px; background: rgba(255,255,255,.05); color: var(--text-primary); padding: 8px 10px; font: .68rem var(--font-title); letter-spacing: .7px; }
-    .dispatch-form select option { color: #111; }
-    .dispatch-form button { cursor: pointer; border-color: var(--accent-orange); background: color-mix(in srgb, var(--accent-orange) 15%, transparent); }
-    .dispatch-list { padding: 10px; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
-    .dispatch-card { border: 1px solid rgba(255,255,255,.09); border-left: 2px solid #46d89a; background: rgba(255,255,255,.035); border-radius: 11px; padding: 11px; }
-    .dispatch-card.slowed { border-left-color: #f4cd5e; }
-    .dispatch-card.needs_assistance, .dispatch-card.assistance_requested { border-left-color: #ff5d66; }
-    .dispatch-top, .dispatch-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .dispatch-id { font: .73rem var(--font-title); letter-spacing: 1px; color: #f1f5f7; }
-    .dispatch-status { font: .57rem var(--font-title); letter-spacing: .7px; color: #78e6b1; }
-    .slowed .dispatch-status { color: #f4cd5e; }
-    .needs_assistance .dispatch-status, .assistance_requested .dispatch-status { color: #ff737b; }
-    .dispatch-route { color: #cad2d8; font-size: .69rem; margin: 7px 0; }
-    .dispatch-meta { color: var(--text-muted); font: .61rem var(--font-title); }
-    .dispatch-actions { margin-top: 9px; display: flex; gap: 6px; }
-    .action-button { min-height: 29px; font-size: .56rem; cursor: pointer; padding: 5px 7px; }
-    .action-button.help { color: #ff848a; border-color: rgba(255,92,104,.4); }
-    .action-button.resume { color: #88e9bb; border-color: rgba(70,216,154,.35); }
-    .deliveries { max-height: 190px; overflow: auto; padding: 13px; border-top: 1px solid rgba(255,255,255,.08); }
-    .delivery-card { margin-top: 9px; padding: 10px; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; background: rgba(255,255,255,.035); color: #e5edf1; font-size: .64rem; line-height: 1.5; }
-    .delivery-card .success { color: #77e8b0; font: .62rem var(--font-title); letter-spacing: .7px; }
-    .delivery-card hr { border: 0; border-top: 1px solid rgba(255,255,255,.08); margin: 7px 0; }
-    .map-label { color: #0b1115; background: #fbfcfc; padding: 3px 6px; border-radius: 5px; border: 0; font: 600 10px var(--font-title); box-shadow: 0 1px 5px #0006; }
-    .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: rgba(10,17,23,.95); color: #eaf0f3; }
-    .leaflet-container a { color: var(--accent-orange); }
-    @media (max-width: 980px) {
-        .control-shell { height: auto; min-height: 0; }
-        .control-grid { grid-template-columns: 1fr; }
-        #dispatch-map { height: 52vh; min-height: 340px; }
-        .control-panel-card { max-height: none; }
-    }
+    .control-page { min-height:calc(100vh - 50px); max-width:950px; margin:0 auto; color:#dce2e7; }
+    .control-heading { display:flex; justify-content:space-between; align-items:end; margin-bottom:16px; }
+    .control-heading h1 { margin:0; font:500 1.25rem var(--font-title); letter-spacing:1.8px; }
+    .control-heading p { margin:5px 0 0; color:#7f8991; font-size:.67rem; }
+    .control-page .status-panel { min-height:65vh; }
+    .control-page .dispatch-list { padding-top:8px; }
+    .control-page .dispatch-card { padding:13px; }
+    .control-page .dispatch-truck { font-size:.7rem; }
+    .control-page .dispatch-destination { font-size:.67rem; }
+    .control-page .dispatch-details { font-size:.59rem; }
+    .control-page .dispatch-form { grid-template-columns:1fr 1.4fr auto; }
 </style>
-
-<section class="control-shell">
+<main class="control-page">
     <header class="control-heading">
-        <div>
-            <h1>AEGIS TWIN / CONTROL PANEL</h1>
-            <div class="control-subtitle">SEATTLE OPERATIONS · LIVE DISPATCH & ROADSIDE RESPONSE</div>
-        </div>
-        <div class="control-subtitle" id="live-state">SIMULATION CONNECTING</div>
+        <div><h1>CONTROL PANEL</h1><p>Dispatch assignment and roadside response.</p></div>
+        <span class="ops-location" id="live-state">CONNECTING</span>
     </header>
-
-    <div class="control-grid">
-        <div class="map-card">
-            <div id="dispatch-map" aria-label="Live Seattle dispatch map"></div>
-            <div class="map-legend">
-                <span><i class="legend-dot" style="background:#46d89a"></i>ACTIVE</span>
-                <span><i class="legend-dot" style="background:#f4cd5e"></i>SLOWED</span>
-                <span><i class="legend-dot" style="background:#ff5d66"></i>ASSISTANCE</span>
-                <span><i class="legend-dot" style="background:#f4a261"></i>WAREHOUSE</span>
-            </div>
+    <section class="status-panel">
+        <div class="status-tabs">
+            <button class="status-tab" data-filter="finished">FINISHED <span class="status-count" data-count="finished">0</span></button>
+            <button class="status-tab active" data-filter="ongoing">ONGOING <span class="status-count" data-count="ongoing">0</span></button>
+            <button class="status-tab" data-filter="attention">NEEDS ATTENTION <span class="status-count" data-count="attention">0</span></button>
+            <button class="status-tab" data-filter="cancelled">CANCELLED <span class="status-count" data-count="cancelled">0</span></button>
         </div>
-        <aside class="control-panel-card">
-            <div class="panel-head">
-                <h2>DISPATCH CONTROL</h2>
-                <p>Assign a truck from either Seattle hub.</p>
-            </div>
-            <form class="dispatch-form" id="dispatch-form">
-                <select id="origin-select" aria-label="Warehouse"></select>
-                <select id="destination-select" aria-label="Destination"></select>
-                <button type="submit"><i class="fa-solid fa-truck-fast"></i> CREATE DISPATCH</button>
-            </form>
-            <div class="dispatch-list" id="dispatch-list"></div>
-            <section class="deliveries">
-                <h2>COMPLETED DELIVERIES</h2>
-                <div id="delivery-list"></div>
-            </section>
-        </aside>
-    </div>
-</section>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-<script>
-(() => {
-    const mapNode = document.getElementById('dispatch-map');
-    const map = L.map(mapNode, { minZoom: 11, maxZoom: 18, maxBounds: [[47.48, -122.48], [47.76, -122.23]], maxBoundsViscosity: 0.9 })
-        .setView([47.6062, -122.3321], 11);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
-    }).addTo(map);
-
-    const markers = new Map();
-    const routeLayers = new Map();
-    let catalog = { warehouses: [], destinations: [] };
-    let firstLoad = true;
-    const interpolate = (a, b, amount) => L.latLng(
-        a.lat + (b.lat - a.lat) * amount,
-        a.lng + (b.lng - a.lng) * amount
-    );
-    const colorFor = status => status === 'needs_assistance' || status === 'assistance_requested'
-        ? '#ff5d66' : status === 'slowed' ? '#f4cd5e' : '#46d89a';
-    const escapeHtml = text => String(text).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-
-    function drawCatalog() {
-        catalog.warehouses.forEach(hub => L.circleMarker([hub.lat, hub.lng], {
-            radius: 8, color: '#f4a261', fillColor: '#f4a261', fillOpacity: .95, weight: 2
-        }).addTo(map).bindTooltip(hub.name, { permanent: true, direction: 'top', className: 'map-label' }));
-        const originSelect = document.getElementById('origin-select');
-        const destinationSelect = document.getElementById('destination-select');
-        originSelect.innerHTML = catalog.warehouses.map(h => `<option value="${h.id}">${escapeHtml(h.name)}</option>`).join('');
-        destinationSelect.innerHTML = catalog.destinations.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('');
-    }
-
-    function renderDispatches(items) {
-        const list = document.getElementById('dispatch-list');
-        list.innerHTML = items.length ? items.map(d => {
-            const statusText = d.status === 'needs_assistance' ? 'NEEDS ASSISTANCE'
-                : d.status === 'assistance_requested' ? 'ROADSIDE DISPATCHED'
-                : d.status === 'slowed' ? 'SLOWED' : 'EN ROUTE';
-            const button = d.status === 'needs_assistance'
-                ? `<button class="action-button help" data-action="assistance" data-id="${d.id}">SEND ROADSIDE</button>`
-                : d.status === 'assistance_requested'
-                    ? `<button class="action-button resume" data-action="resume" data-id="${d.id}">MARK REPAIRED & RESUME</button>` : '';
-            return `<article class="dispatch-card ${d.status}">
-                <div class="dispatch-top"><span class="dispatch-id">${escapeHtml(d.truck_id)}</span><span class="dispatch-status">${statusText}</span></div>
-                <div class="dispatch-route">${escapeHtml(d.origin_name)} → ${escapeHtml(d.destination_name)}</div>
-                <div class="dispatch-meta"><span>${d.speed_mph} MPH · ${Math.round(d.progress * 100)}%</span><span>ETA ${Math.max(0, Math.ceil(d.eta_minutes * (1 - d.progress)))} MIN</span></div>
-                ${button ? `<div class="dispatch-actions">${button}</div>` : ''}
-            </article>`;
-        }).join('') : '<div class="dispatch-route">No active dispatches. Create one above.</div>';
-
-        const activeIds = new Set(items.map(d => d.id));
-        for (const [id, marker] of markers) if (!activeIds.has(id)) { map.removeLayer(marker); markers.delete(id); }
-        for (const [id, layers] of routeLayers) if (!activeIds.has(id)) {
-            layers.forEach(layer => map.removeLayer(layer)); routeLayers.delete(id);
-        }
-
-        items.forEach(d => {
-            const route = d.route;
-            const segmentDistances = [];
-            let total = 0;
-            for (let i = 1; i < route.length; i++) {
-                const a = L.latLng(route[i - 1][0], route[i - 1][1]);
-                const b = L.latLng(route[i][0], route[i][1]);
-                const length = a.distanceTo(b);
-                segmentDistances.push(length); total += length;
-            }
-            let left = total * d.progress;
-            const traveled = [route[0]];
-            const remaining = [];
-            for (let i = 0; i < segmentDistances.length; i++) {
-                const a = L.latLng(route[i][0], route[i][1]);
-                const b = L.latLng(route[i + 1][0], route[i + 1][1]);
-                const length = segmentDistances[i];
-                if (left >= length) {
-                    traveled.push(route[i + 1]); left -= length;
-                } else {
-                    const point = interpolate(a, b, Math.max(0, Math.min(1, left / length)));
-                    if (!traveled.length || traveled[traveled.length - 1] !== point) traveled.push([point.lat, point.lng]);
-                    remaining.push([point.lat, point.lng], ...route.slice(i + 1));
-                    break;
-                }
-            }
-            const color = colorFor(d.status);
-            const future = remaining.length > 1
-                ? L.polyline(remaining, { color: '#9ba5ad', weight: 3, opacity: .72, dashArray: '5 8' })
-                : null;
-            const done = L.polyline(traveled, { color: '#55a9ff', weight: 4, opacity: .9 });
-            const layers = [future, done].filter(Boolean);
-            if (routeLayers.has(d.id)) routeLayers.get(d.id).forEach(layer => map.removeLayer(layer));
-            layers.forEach(layer => layer.addTo(map));
-            routeLayers.set(d.id, layers);
-            const currentPoint = L.polyline(route).getLatLngs();
-            let distanceLeft = total * d.progress;
-            let point = currentPoint[0];
-            for (let i = 1; i < currentPoint.length; i++) {
-                const length = currentPoint[i - 1].distanceTo(currentPoint[i]);
-                if (distanceLeft <= length) {
-                    point = interpolate(currentPoint[i - 1], currentPoint[i], length ? distanceLeft / length : 0);
-                    break;
-                }
-                distanceLeft -= length;
-                point = currentPoint[i];
-            }
-            const tooltip = `<b>${escapeHtml(d.truck_id)}</b><br>${escapeHtml(d.destination_name)}<br>${d.speed_mph} mph · ${escapeHtml(statusTextFor(d.status))}`;
-            if (markers.has(d.id)) {
-                markers.get(d.id).setLatLng(point).setStyle({ color, fillColor: color }).setTooltipContent(tooltip);
-            } else {
-                markers.set(d.id, L.circleMarker(point, { radius: 7, color, fillColor: color, fillOpacity: 1, weight: 2 })
-                    .addTo(map).bindTooltip(tooltip, { sticky: true }));
-            }
-        });
-    }
-
-    function statusTextFor(status) {
-        return status === 'needs_assistance' ? 'NEEDS ASSISTANCE'
-            : status === 'assistance_requested' ? 'ROADSIDE DISPATCHED'
-            : status === 'slowed' ? 'SLOWED' : 'EN ROUTE';
-    }
-
-    function renderCompleted(items) {
-        document.getElementById('delivery-list').innerHTML = items.length ? items.map(d =>
-            `<article class="delivery-card"><div class="success">SUCCESS | DISPATCHED FROM ${escapeHtml(d.origin_name)} TO ${escapeHtml(d.destination_name)} AND ARRIVED IN ${d.duration_minutes} MINS</div><hr><div>The delivery was ${escapeHtml(d.timing)}.</div></article>`
-        ).join('') : '<div class="dispatch-route">No completed deliveries yet.</div>';
-    }
-
-    async function refresh() {
-        try {
-            const response = await fetch('/api/dispatch');
-            if (!response.ok) throw new Error('Dispatch feed unavailable');
-            const state = await response.json();
-            if (firstLoad) { drawCatalog(); firstLoad = false; }
-            renderDispatches(state.active || []);
-            renderCompleted(state.completed || []);
-            document.getElementById('live-state').textContent = `LIVE SIMULATION · ${(state.active || []).length} ACTIVE`;
-            (state.new_incidents || []).forEach(id => {
-                const truck = (state.active || []).find(d => d.id === id);
-                window.showNotice?.('INCIDENT DETECTED', `${truck?.truck_id || 'Truck'} needs roadside assistance.`, 4500, true, true);
-            });
-        } catch (error) {
-            document.getElementById('live-state').textContent = 'SIMULATION OFFLINE';
-        }
-    }
-
-    document.getElementById('dispatch-form').addEventListener('submit', async event => {
-        event.preventDefault();
-        const response = await fetch('/api/dispatch', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                origin_id: document.getElementById('origin-select').value,
-                destination_id: document.getElementById('destination-select').value
-            })
-        });
-        const data = await response.json();
-        if (!response.ok) return window.showNotice?.('DISPATCH FAILED', data.error, 3500, false, true);
-        window.showNotice?.('DISPATCH CREATED', `${data.dispatch.truck_id} is en route to ${data.dispatch.destination_name}.`, 3000, true);
-        refresh();
-    });
-
-    document.getElementById('dispatch-list').addEventListener('click', async event => {
-        const button = event.target.closest('button[data-action]');
-        if (!button) return;
-        const response = await fetch(`/api/dispatch/${button.dataset.id}/${button.dataset.action}`, { method: 'POST' });
-        const data = await response.json();
-        if (!response.ok) return window.showNotice?.('CONTROL ACTION FAILED', data.error, 3500, false, true);
-        window.showNotice?.(button.dataset.action === 'assistance' ? 'ROADSIDE REQUESTED' : 'DISPATCH RESUMED',
-            button.dataset.action === 'assistance' ? 'Roadside assistance has been queued for this truck.' : 'Truck returned to its route.',
-            3500, true);
-        refresh();
-    });
-
-    fetch('/api/dispatch?catalog=1')
-        .then(response => response.json())
-        .then(data => { catalog = data.catalog; drawCatalog(); firstLoad = false; })
-        .catch(() => {});
-    refresh();
-    setInterval(refresh, 2000);
-    setTimeout(() => map.invalidateSize(), 150);
-})();
-</script>
+        <form class="dispatch-form" id="dispatch-form">
+            <select id="origin-select" aria-label="Dispatch warehouse"></select>
+            <select id="destination-select" aria-label="Dispatch destination"></select>
+            <button type="submit">CREATE DISPATCH</button>
+        </form>
+        <div class="dispatch-list" id="dispatch-list"></div>
+    </section>
+</main>
+<script src="{{ url_for('static', filename='dispatch-console.js') }}"></script>
 {% endblock %}

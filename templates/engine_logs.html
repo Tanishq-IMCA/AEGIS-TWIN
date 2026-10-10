@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .logs-page { height:calc(100vh - 50px); min-height:520px; max-width:1100px; margin:0 auto; display:flex; flex-direction:column; color:#dce2e7; }
+    .logs-header { display:flex; justify-content:space-between; align-items:end; gap:12px; margin-bottom:12px; }
+    .logs-header h1 { margin:0; font:500 1.2rem var(--font-title); letter-spacing:1.7px; }
+    .logs-header p { margin:5px 0 0; color:#7e8991; font-size:.65rem; }
+    .logs-filter { min-width:210px; height:31px; border:1px solid rgba(255,255,255,.12); border-radius:6px; background:#10151a; color:#dce2e7; padding:0 9px; }
+    .logs-feed { flex:1; overflow:auto; border:1px solid rgba(255,255,255,.08); border-radius:10px; background:#090d10; padding:7px 12px; font: .67rem ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .log-entry { display:grid; grid-template-columns:180px 65px minmax(145px,200px) 1fr; gap:10px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.045); }
+    .log-time { color:#78838b; font-variant-numeric:tabular-nums; }
+    .log-level { color:#a8b1b8; }
+    .log-level.ERROR { color:#d7898e; }
+    .log-level.WARN { color:#d2bd76; }
+    .log-event { color:#aab4bc; }
+    .log-message { color:#dce2e7; overflow-wrap:anywhere; }
+    .logs-empty { color:#78838b; padding:18px 3px; }
+    @media(max-width:760px) { .logs-page { height:auto; min-height:75vh; } .log-entry { grid-template-columns:1fr 55px; gap:4px 8px; } .log-event,.log-message { grid-column:1/-1; } .logs-header { align-items:stretch; flex-direction:column; } .logs-filter { width:100%; } }
+</style>
+<main class="logs-page">
+    <header class="logs-header">
+        <div><h1>ENGINE LOGS</h1><p>LIVE EVENT STREAM · UTC TIMESTAMPS TO MILLISECOND PRECISION</p></div>
+        <input class="logs-filter" id="log-filter" placeholder="Filter events…" aria-label="Filter engine logs">
+    </header>
+    <div class="logs-feed" id="logs-feed"><div class="logs-empty">Connecting to the engine…</div></div>
+</main>
+<script>
+(() => {
+    const feed = document.getElementById('logs-feed');
+    const filter = document.getElementById('log-filter');
+    let cursor = null;
+    let entries = [];
+    const esc = text => String(text ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    function render() {
+        const query = filter.value.trim().toLowerCase();
+        const shown = entries.filter(item => !query || `${item.event} ${item.message} ${item.truck_id || ''}`.toLowerCase().includes(query));
+        feed.innerHTML = shown.length ? shown.slice(-500).reverse().map(item =>
+            `<div class="log-entry"><span class="log-time">${esc(item.timestamp)}</span><span class="log-level ${esc(item.level)}">${esc(item.level)}</span><span class="log-event">${esc(item.event)}${item.truck_id ? ` · ${esc(item.truck_id)}` : ''}</span><span class="log-message">${esc(item.message)}</span></div>`
+        ).join('') : '<div class="logs-empty">No matching engine events.</div>';
+    }
+    async function poll() {
+        try {
+            await fetch('/api/dispatch'); // advances the simulator while this live feed is open
+            const url = cursor ? `/api/engine/logs?after=${encodeURIComponent(cursor)}` : '/api/engine/logs?limit=150';
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Log service unavailable');
+            const data = await response.json();
+            if (!cursor) entries = data.entries || [];
+            else entries.push(...(data.entries || []));
+            entries = entries.slice(-2000);
+            cursor = data.cursor || cursor;
+            render();
+        } catch (error) {
+            if (!entries.length) feed.innerHTML = '<div class="logs-empty">Engine log stream unavailable.</div>';
+        }
+    }
+    filter.addEventListener('input', render);
+    poll();
+    setInterval(poll, 1000);
+})();
+</script>
+{% endblock %}

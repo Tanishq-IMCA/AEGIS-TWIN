@@ -4,7 +4,10 @@ import math
 import random
 import time
 import uuid
+from datetime import datetime, timezone
+from functools import lru_cache
 
+import requests
 import storage_manager
 
 
@@ -37,6 +40,7 @@ DESTINATIONS = [
 ]
 
 _STATE_KEY = "dispatch_engine"
+_LOG_KEY = "engine_logs"
 _EARTH_MILES = 3958.8
 
 
@@ -48,22 +52,35 @@ def _distance_miles(a, b):
     return 2 * _EARTH_MILES * math.asin(math.sqrt(haversine))
 
 
+@lru_cache(maxsize=100)
+def _osrm_route(origin_lng, origin_lat, destination_lng, destination_lat):
+    url = (
+        "https://router.project-osrm.org/route/v1/driving/"
+        f"{origin_lng},{origin_lat};{destination_lng},{destination_lat}"
+    )
+    response = requests.get(
+        url,
+        params={"overview": "full", "geometries": "geojson", "steps": "false"},
+        headers={"User-Agent": "AegisTwin/1.0"},
+        timeout=8,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    if payload.get("code") != "Ok" or not payload.get("routes"):
+        raise ValueError("No drivable Seattle route was returned.")
+    route = payload["routes"][0]
+    points = [[lat, lng] for lng, lat in route["geometry"]["coordinates"]]
+    return tuple(tuple(point) for point in points), route["distance"] / 1609.344
+
+
 def _route(origin, destination):
-    spine_lng = -122.329
-    if destination["id"] == "west-seattle":
-        return [
-            [origin["lat"], origin["lng"]],
-            [47.578, -122.337],
-            [47.571, -122.350],
-            [47.563, -122.370],
-            [destination["lat"], destination["lng"]],
-        ]
-    return [
-        [origin["lat"], origin["lng"]],
-        [origin["lat"], spine_lng],
-        [destination["lat"], spine_lng],
-        [destination["lat"], destination["lng"]],
-    ]
+    try:
+        points, distance_miles = _osrm_route(
+            origin["lng"], origin["lat"], destination["lng"], destination["lat"]
+        )
+    except requests.RequestException as error:
+        raise ValueError("Street routing is unavailable. Try creating the dispatch again.") from error
+    return [list(point) for point in points], max(0.5, distance_miles)
 
 
 def _route_miles(route):
@@ -76,8 +93,7 @@ def _target_speed(route_miles):
 
 
 def _build_dispatch(origin, destination, truck_id, progress=0, demo=False):
-    route = _route(origin, destination)
-    miles = _route_miles(route)
+    route, miles = _route(origin, destination)
     target_speed = _target_speed(miles) if not demo else random.choice([50, 90])
     eta_minutes = max(3, round(miles / target_speed * 60))
     now = time.time()
@@ -90,6 +106,7 @@ def _build_dispatch(origin, destination, truck_id, progress=0, demo=False):
         "destination_id": destination["id"],
         "destination_name": destination["name"],
         "route": route,
+        "route_version": 2,
         "distance_miles": round(miles, 1),
         "progress": progress,
         "target_speed_mph": target_speed,
@@ -101,6 +118,7 @@ def _build_dispatch(origin, destination, truck_id, progress=0, demo=False):
         "incident_at": random.uniform(0.22, 0.78) if not demo and random.random() < 0.05 else None,
         "status": "en_route",
         "assistance_requested_at": None,
+        "last_log_speed": target_speed,
     }
 
 
@@ -112,6 +130,7 @@ def _seed_state():
             _build_dispatch(WAREHOUSES[0], DESTINATIONS[0], "AEGIS-052", 0.39, demo=True),
         ],
         "completed": [],
+        "cancelled": [],
     }
 
 
@@ -121,18 +140,57 @@ def _turn_points(dispatch):
     total = sum(lengths) or 1
     turns = []
     traveled = 0
-    for segment_length in lengths[:-1]:
+    previous_bearing = None
+    last_turn = -1
+    for index, segment_length in enumerate(lengths):
+        start, end = route[index], route[index + 1]
+        lat1, lat2 = math.radians(start[0]), math.radians(end[0])
+        delta_lng = math.radians(end[1] - start[1])
+        bearing = math.degrees(math.atan2(
+            math.sin(delta_lng) * math.cos(lat2),
+            math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(delta_lng),
+        ))
+        if previous_bearing is not None:
+            change = abs((bearing - previous_bearing + 180) % 360 - 180)
+            if change >= 35 and traveled - last_turn >= 0.035:
+                turns.append(traveled / total)
+                last_turn = traveled
+        previous_bearing = bearing
         traveled += segment_length
-        turns.append(traveled * 1.15 / dispatch["distance_miles"])
     return turns
 
 
-def _current_speed(dispatch):
+def _current_speed(dispatch, elapsed):
     if dispatch["status"] in {"needs_assistance", "assistance_requested"}:
         return 0
-    near_turn = any(abs(dispatch["progress"] - turn) * dispatch["distance_miles"] < 0.18
+    near_turn = any(abs(dispatch["progress"] - turn) * dispatch["distance_miles"] < 0.06
                     for turn in _turn_points(dispatch))
-    return round(dispatch["target_speed_mph"] * (0.62 if near_turn else 1), 1)
+    desired = min(30, dispatch["target_speed_mph"]) if near_turn else dispatch["target_speed_mph"]
+    current = dispatch.get("speed_mph", desired)
+    ramp = max(1, elapsed * 8)
+    return round(current + max(-ramp, min(ramp, desired - current)), 1)
+
+
+def _append_logs(username, entries):
+    if not entries:
+        return
+    logs = storage_manager.get_data(username, _LOG_KEY)
+    if not isinstance(logs, list):
+        logs = []
+    stamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    for event, message, dispatch, level in entries:
+        logs.append({
+            "id": uuid.uuid4().hex,
+            "timestamp": stamp,
+            "level": level,
+            "event": event,
+            "message": message,
+            "dispatch_id": dispatch.get("id") if dispatch else None,
+            "truck_id": dispatch.get("truck_id") if dispatch else None,
+            "speed_mph": dispatch.get("speed_mph") if dispatch else None,
+            "progress": round(dispatch.get("progress", 0) * 100, 2) if dispatch else None,
+        })
+    storage_manager.save_data(username, _LOG_KEY, logs[-5000:])
 
 
 def _load_state(username):
@@ -140,24 +198,41 @@ def _load_state(username):
     if not isinstance(state, dict) or not isinstance(state.get("active"), list):
         state = _seed_state()
     state.setdefault("completed", [])
+    state.setdefault("cancelled", [])
+    for dispatch in state["active"]:
+        if dispatch.get("route_version") == 2:
+            continue
+        origin = next((item for item in WAREHOUSES if item["id"] == dispatch.get("origin_id")), None)
+        destination = next((item for item in DESTINATIONS if item["id"] == dispatch.get("destination_id")), None)
+        if origin and destination:
+            route, miles = _route(origin, destination)
+            dispatch.update({
+                "route": route,
+                "route_version": 2,
+                "distance_miles": round(miles, 1),
+            })
     return state
 
 
-def _advance(state):
+def _advance(username, state):
     now = time.time()
     completed_now = []
-    new_incidents = []
+    notices = []
+    log_entries = []
     remaining = []
     for dispatch in state["active"]:
+        old_status = dispatch["status"]
         if dispatch["status"] in {"needs_assistance", "assistance_requested"}:
             dispatch["last_tick"] = now
             remaining.append(dispatch)
+            log_entries.append(("ROADSIDE_WAIT", "Truck is holding position for roadside support.", dispatch, "WARN"))
             continue
 
         elapsed = max(0, min(now - dispatch.get("last_tick", now), 60))
         dispatch["last_tick"] = now
-        dispatch["speed_mph"] = _current_speed(dispatch)
-        miles_moved = dispatch["speed_mph"] * elapsed / 3600
+        old_speed = dispatch.get("speed_mph", dispatch["target_speed_mph"])
+        dispatch["speed_mph"] = _current_speed(dispatch, elapsed)
+        miles_moved = ((old_speed + dispatch["speed_mph"]) / 2) * elapsed / 3600
         dispatch["progress"] = min(1, dispatch["progress"] + miles_moved / dispatch["distance_miles"])
 
         incident_at = dispatch.get("incident_at")
@@ -165,8 +240,10 @@ def _advance(state):
             dispatch["status"] = "needs_assistance"
             dispatch["speed_mph"] = 0
             dispatch["incident_at"] = None
-            new_incidents.append(dispatch["id"])
             remaining.append(dispatch)
+            message = f"{dispatch['truck_id']} needs roadside assistance near {dispatch['destination_name']}."
+            notices.append({"id": f"incident-{dispatch['id']}", "title": "INCIDENT DETECTED", "message": message, "error": True})
+            log_entries.append(("INCIDENT_DETECTED", message, dispatch, "ERROR"))
             continue
 
         if dispatch["progress"] >= 1:
@@ -185,20 +262,32 @@ def _advance(state):
                 "timing": timing,
                 "arrived_at": now,
             })
+            delivery = completed_now[-1]
+            message = f"{dispatch['truck_id']} completed delivery to {dispatch['destination_name']}."
+            notices.append({"id": f"complete-{dispatch['id']}", "title": "DELIVERY COMPLETED", "message": message, "error": False})
+            log_entries.append(("DELIVERY_COMPLETED", message, delivery | dispatch, "INFO"))
         else:
             dispatch["status"] = "slowed" if dispatch["speed_mph"] < dispatch["target_speed_mph"] else "en_route"
             remaining.append(dispatch)
+            if dispatch["status"] == "slowed" and old_status != "slowed":
+                message = f"{dispatch['truck_id']} slowed to {dispatch['speed_mph']} mph on a turn."
+                notices.append({"id": f"slow-{dispatch['id']}-{int(now)}", "title": "DISPATCH SLOWED", "message": message, "error": False})
+                log_entries.append(("TRUCK_SLOWED", message, dispatch, "WARN"))
+            elif dispatch["status"] == "en_route" and old_status == "slowed":
+                log_entries.append(("TRUCK_SPEED_RECOVERED", "Truck returned to cruise speed.", dispatch, "INFO"))
+            log_entries.append(("ENGINE_TICK", f"Progress {dispatch['progress'] * 100:.2f}% at {dispatch['speed_mph']:.1f} mph.", dispatch, "INFO"))
 
     state["active"] = remaining
     state["completed"] = (completed_now + state["completed"])[:12]
-    return new_incidents
+    _append_logs(username, log_entries)
+    return notices
 
 
 def get_state(username):
     state = _load_state(username)
-    new_incidents = _advance(state)
+    notices = _advance(username, state)
     storage_manager.save_data(username, _STATE_KEY, state)
-    return state, new_incidents
+    return state, notices
 
 
 def create_dispatch(username, origin_id=None, destination_id=None):
@@ -214,6 +303,11 @@ def create_dispatch(username, origin_id=None, destination_id=None):
     dispatch = _build_dispatch(origin, destination, f"AEGIS-{truck_number}")
     state["active"].append(dispatch)
     storage_manager.save_data(username, _STATE_KEY, state)
+    incident_rate = "5% incident chance assigned." if dispatch["incident_at"] is not None else "No incident assigned."
+    _append_logs(username, [
+        ("DISPATCH_CREATED", f"{dispatch['truck_id']} assigned from {origin['name']} to {destination['name']}.", dispatch, "INFO"),
+        ("INCIDENT_RISK_ROLLED", incident_rate, dispatch, "INFO"),
+    ])
     return dispatch
 
 
@@ -227,6 +321,7 @@ def request_assistance(username, dispatch_id):
     dispatch["status"] = "assistance_requested"
     dispatch["assistance_requested_at"] = time.time()
     storage_manager.save_data(username, _STATE_KEY, state)
+    _append_logs(username, [("ROADSIDE_REQUESTED", "Operator requested roadside assistance.", dispatch, "WARN")])
     return dispatch
 
 
@@ -241,7 +336,99 @@ def resume_dispatch(username, dispatch_id):
     dispatch["incident_at"] = None
     dispatch["last_tick"] = time.time()
     storage_manager.save_data(username, _STATE_KEY, state)
+    _append_logs(username, [("DISPATCH_RESUMED", "Roadside issue cleared; truck returned to route.", dispatch, "INFO")])
     return dispatch
+
+
+def cancel_dispatch(username, dispatch_id):
+    state = _load_state(username)
+    dispatch = next((item for item in state["active"] if item["id"] == dispatch_id), None)
+    if dispatch is None:
+        raise KeyError("Active dispatch not found.")
+    dispatch["status"] = "cancelled"
+    dispatch["cancelled_at"] = time.time()
+    state["active"].remove(dispatch)
+    state["cancelled"] = ([dispatch] + state["cancelled"])[:50]
+    storage_manager.save_data(username, _STATE_KEY, state)
+    _append_logs(username, [("DISPATCH_CANCELLED", "Operator cancelled the dispatch.", dispatch, "WARN")])
+    return dispatch
+
+
+def get_logs(username, after=None, limit=150):
+    logs = storage_manager.get_data(username, _LOG_KEY)
+    if not isinstance(logs, list):
+        logs = []
+    if after:
+        index = next((i for i, entry in enumerate(logs) if entry.get("id") == after), None)
+        logs = logs[index + 1:] if index is not None else logs[-limit:]
+    else:
+        logs = logs[-limit:]
+    return logs[-limit:]
+
+
+def _trailers(username):
+    trailers = storage_manager.get_data(username, "trailers")
+    if isinstance(trailers, list):
+        return trailers
+    trailers = [
+        {"id": "TRL-104", "type": "Dry Van", "hub": "sodo", "status": "available"},
+        {"id": "TRL-116", "type": "Refrigerated", "hub": "sodo", "status": "assigned"},
+        {"id": "TRL-203", "type": "Dry Van", "hub": "northgate", "status": "available"},
+        {"id": "TRL-214", "type": "Flatbed", "hub": "northgate", "status": "maintenance"},
+        {"id": "TRL-221", "type": "Refrigerated", "hub": "northgate", "status": "available"},
+        {"id": "TRL-308", "type": "Dry Van", "hub": "sodo", "status": "available"},
+    ]
+    storage_manager.save_data(username, "trailers", trailers)
+    return trailers
+
+
+def list_trailers(username):
+    return _trailers(username)
+
+
+def add_trailer(username, trailer_id, trailer_type, hub):
+    trailer_id = str(trailer_id or "").strip().upper()
+    trailer_type = str(trailer_type or "").strip()
+    if not trailer_id or not trailer_type or hub not in {item["id"] for item in WAREHOUSES}:
+        raise ValueError("Enter a trailer ID and type, then choose a valid hub.")
+    trailers = _trailers(username)
+    if any(item["id"].casefold() == trailer_id.casefold() for item in trailers):
+        raise ValueError("That trailer ID already exists.")
+    trailer = {
+        "id": trailer_id,
+        "type": trailer_type,
+        "hub": hub,
+        "status": "available",
+    }
+    trailers.append(trailer)
+    storage_manager.save_data(username, "trailers", trailers)
+    return trailer
+
+
+def update_trailer(username, trailer_id, updates):
+    trailers = _trailers(username)
+    trailer = next((item for item in trailers if item["id"] == trailer_id), None)
+    if trailer is None:
+        raise KeyError("Trailer not found.")
+    if "status" in updates:
+        if updates["status"] not in {"available", "assigned", "maintenance"}:
+            raise ValueError("Choose available, assigned, or maintenance.")
+        trailer["status"] = updates["status"]
+    if "hub" in updates:
+        if updates["hub"] not in {item["id"] for item in WAREHOUSES}:
+            raise ValueError("Choose a valid hub.")
+        trailer["hub"] = updates["hub"]
+    trailer["last_checked"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    storage_manager.save_data(username, "trailers", trailers)
+    return trailer
+
+
+def delete_trailer(username, trailer_id):
+    trailers = _trailers(username)
+    remaining = [item for item in trailers if item["id"] != trailer_id]
+    if len(remaining) == len(trailers):
+        raise KeyError("Trailer not found.")
+    storage_manager.save_data(username, "trailers", remaining)
 
 
 def catalog():

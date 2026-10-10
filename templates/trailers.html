@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .trailers-page { max-width:980px; margin:0 auto; color:#dce2e7; }
+    .trailers-header { display:flex; justify-content:space-between; align-items:end; margin-bottom:16px; }
+    .trailers-header h1 { margin:0; font:500 1.25rem var(--font-title); letter-spacing:1.8px; }
+    .trailers-header p { margin:5px 0 0; color:#7e8991; font-size:.66rem; }
+    .trailer-counts { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+    .trailer-count { background:#0e1317; border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:12px; }
+    .trailer-count span { color:#7c8790; font: .56rem var(--font-title); letter-spacing:.7px; }
+    .trailer-count strong { display:block; margin-top:5px; color:#e1e6ea; font:500 1.2rem var(--font-title); }
+    .trailer-form,.trailer-list { background:#0b0f13; border:1px solid rgba(255,255,255,.08); border-radius:10px; }
+    .trailer-form { display:grid; grid-template-columns:1fr 1fr 1.3fr auto; gap:7px; padding:10px; margin-bottom:10px; }
+    .trailer-form input,.trailer-form select,.trailer-form button { min-width:0; height:32px; border:1px solid rgba(255,255,255,.1); border-radius:6px; background:#11171c; color:#dce2e7; padding:0 8px; font-size:.63rem; }
+    .trailer-form select option { color:#111; }
+    .trailer-form button { background:#e6eaed; color:#101419; cursor:pointer; padding:0 13px; }
+    .trailer-list { overflow:hidden; }
+    .trailer-row { display:grid; grid-template-columns:1fr 1.3fr 1.3fr 1fr auto; align-items:center; gap:9px; padding:11px 13px; border-bottom:1px solid rgba(255,255,255,.055); font-size:.66rem; }
+    .trailer-row:last-child { border-bottom:0; }
+    .trailer-id { color:#e5eaed; font: .62rem var(--font-title); letter-spacing:.6px; }
+    .trailer-status { color:#9bcdb0; font: .55rem var(--font-title); letter-spacing:.5px; }
+    .trailer-status.assigned { color:#9ca9b4; }
+    .trailer-status.maintenance { color:#d2bd76; }
+    .trailer-row select,.trailer-delete { background:transparent; border:1px solid rgba(255,255,255,.12); border-radius:5px; color:#bac3ca; font-size:.58rem; padding:5px 6px; }
+    .trailer-row select option { color:#111; }
+    .trailer-delete { cursor:pointer; }
+    .trailers-empty { color:#7c8790; text-align:center; padding:24px; }
+    @media(max-width:720px) {
+        .trailer-form { grid-template-columns:1fr 1fr; }
+        .trailer-form button { grid-column:1/-1; }
+        .trailer-row { grid-template-columns:1fr 1fr; gap:7px; }
+        .trailer-id { grid-column:1/-1; }
+        .trailer-delete { justify-self:start; }
+    }
+</style>
+<main class="trailers-page">
+    <header class="trailers-header"><div><h1>TRAILER AVAILABILITY</h1><p>SEATTLE HUBS · ASSIGNMENT READINESS</p></div></header>
+    <section class="trailer-counts">
+        <div class="trailer-count"><span>AVAILABLE</span><strong id="count-available">0</strong></div>
+        <div class="trailer-count"><span>ASSIGNED</span><strong id="count-assigned">0</strong></div>
+        <div class="trailer-count"><span>MAINTENANCE</span><strong id="count-maintenance">0</strong></div>
+    </section>
+    <form class="trailer-form" id="trailer-form">
+        <input id="trailer-id" placeholder="Trailer ID" maxlength="24" required>
+        <input id="trailer-type" placeholder="Type" maxlength="32" required>
+        <select id="trailer-hub" aria-label="Trailer hub"></select>
+        <button type="submit">ADD TRAILER</button>
+    </form>
+    <section class="trailer-list" id="trailer-list"><div class="trailers-empty">Loading trailers…</div></section>
+</main>
+<script>
+(() => {
+    let warehouses = [];
+    let trailers = [];
+    const esc = text => String(text ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    function notice(title, message, error=false) { window.showNotice?.(esc(title), esc(message), 3200, false, error); }
+    function render() {
+        ['available','assigned','maintenance'].forEach(status => {
+            document.getElementById(`count-${status}`).textContent = trailers.filter(t => t.status === status).length;
+        });
+        document.getElementById('trailer-list').innerHTML = trailers.length ? trailers.map(t => {
+            const hub = warehouses.find(item => item.id === t.hub)?.name || t.hub;
+            return `<div class="trailer-row">
+                <span class="trailer-id">${esc(t.id)}</span><span>${esc(t.type)}</span><span>${esc(hub)}</span>
+                <select data-status="${esc(t.id)}" aria-label="Status for ${esc(t.id)}">
+                    ${['available','assigned','maintenance'].map(s => `<option value="${s}" ${t.status === s ? 'selected' : ''}>${s.toUpperCase()}</option>`).join('')}
+                </select>
+                <button class="trailer-delete" data-delete="${esc(t.id)}" title="Remove trailer">REMOVE</button>
+            </div>`;
+        }).join('') : '<div class="trailers-empty">No trailers recorded.</div>';
+    }
+    async function load() {
+        const response = await fetch('/api/trailers');
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Trailer list unavailable');
+        trailers = data.trailers;
+        warehouses = data.warehouses;
+        document.getElementById('trailer-hub').innerHTML = warehouses.map(h =>
+            `<option value="${esc(h.id)}">${esc(h.name)}</option>`).join('');
+        render();
+    }
+    document.getElementById('trailer-form').addEventListener('submit', async event => {
+        event.preventDefault();
+        const response = await fetch('/api/trailers', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+            id:document.getElementById('trailer-id').value, type:document.getElementById('trailer-type').value, hub:document.getElementById('trailer-hub').value
+        })});
+        const data = await response.json();
+        if (!response.ok) return notice('TRAILER NOT ADDED', data.error, true);
+        event.currentTarget.reset();
+        await load();
+        notice('TRAILER ADDED', 'Trailer added to availability.');
+    });
+    document.getElementById('trailer-list').addEventListener('change', async event => {
+        const select = event.target.closest('select[data-status]');
+        if (!select) return;
+        const response = await fetch(`/api/trailers/${encodeURIComponent(select.dataset.status)}`, {
+            method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:select.value})
+        });
+        const data = await response.json();
+        if (!response.ok) return notice('UPDATE FAILED', data.error, true);
+        await load();
+        notice('TRAILER UPDATED', `${data.trailer.id} · ${data.trailer.status.toUpperCase()}`);
+    });
+    document.getElementById('trailer-list').addEventListener('click', async event => {
+        const button = event.target.closest('button[data-delete]');
+        if (!button) return;
+        if (!window.confirm(`Remove trailer ${button.dataset.delete} from availability?`)) return;
+        const response = await fetch(`/api/trailers/${encodeURIComponent(button.dataset.delete)}`, {method:'DELETE'});
+        const data = await response.json();
+        if (!response.ok) return notice('REMOVE FAILED', data.error, true);
+        await load();
+        notice('TRAILER REMOVED', 'Trailer removed from availability.');
+    });
+    load().catch(error => { document.getElementById('trailer-list').innerHTML = `<div class="trailers-empty">${esc(error.message)}</div>`; });
+})();
+</script>
+{% endblock %}

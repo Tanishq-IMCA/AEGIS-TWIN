@@ -590,38 +590,7 @@ def logout_action():
 
 @app.route('/')
 def dashboard():
-    try:
-        username = get_current_user()
-        profile = storage_manager.get_profile_data(username)
-        identity = storage_manager.get_identity()
-        
-        user_display = {
-            'name': profile.get('name', username),
-            'social_tag': profile.get('social_tag', ''),
-            'role': profile.get('role', 'User'),
-            'company': profile.get('company', 'Nexus Experience'),
-            'card_last4': profile.get('card_last4', '8842'),
-            'profile_pic': profile.get('profile_pic', ''),
-            'nexus_id': identity.get('nexus_id', 'N/A'),
-            'friendly_name': identity.get('friendly_name', 'Unknown Instance')
-        }
-        
-        goals = storage_manager.get_data(username, 'goals')
-        if not isinstance(goals, list) or not goals:
-            goals = [
-                {"name": "Operational Efficiency", "percent": 88, "color": "#4ADE80"},
-                {"name": "System Integrity", "percent": 94, "color": "#4ADE80"}
-            ]
-            if username:
-                try:
-                    storage_manager.save_data(username, 'goals', goals)
-                except Exception as e:
-                    app.logger.error(f"Failed to save goals for {username}: {e}")
-            
-        return render_template('dashboard.html', title="IMCA Nexus", user=user_display, goals=goals)
-    except Exception as e:
-        app.logger.error(f"DASHBOARD ROUTE ERROR: {e}", exc_info=True)
-        return "Internal server error. Check logs.", 500
+    return render_template('dashboard.html', title="AEGIS TWIN")
 
 @app.route('/api/profile', methods=['GET'])
 def get_profile():
@@ -664,9 +633,13 @@ def save_profile():
         app.logger.error(f"SAVE PROFILE ERROR: {str(e)}", exc_info=True)
         return jsonify({"status": "error"}), 500
 
+@app.route('/trailers')
+def trailers_page():
+    return render_template('trailers.html', title="Trailer Availability")
+
 @app.route('/finances')
 def finances():
-    return render_template('finances.html', title="Financial Overview")
+    return redirect(url_for('trailers_page'))
 
 @app.route('/api/relay/storage_status')
 def relay_storage_status():
@@ -705,9 +678,13 @@ def settings():
         app.logger.error(f"SETTINGS ROUTE ERROR: {e}")
         return "Error loading settings.", 500
 
+@app.route('/manifest')
+def manifest():
+    return render_template('tasks.html', title="Manifest")
+
 @app.route('/tasks')
 def tasks():
-    return render_template('tasks.html', title="Task Operations")
+    return redirect(url_for('manifest'))
 
 @app.route('/calendar')
 def calendar():
@@ -716,6 +693,10 @@ def calendar():
 @app.route('/control-panel')
 def control_panel():
     return render_template('control_panel.html', title="Dispatch Control Panel")
+
+@app.route('/logs')
+def engine_logs_page():
+    return render_template('engine_logs.html', title="Engine Logs")
 
 @app.route('/api/dispatch', methods=['GET', 'POST'])
 def dispatch_api():
@@ -732,8 +713,8 @@ def dispatch_api():
 
         if request.args.get("catalog") == "1":
             return jsonify({"catalog": dispatch_engine.catalog()})
-        state, new_incidents = dispatch_engine.get_state(username)
-        return jsonify({**state, "new_incidents": new_incidents})
+        state, notices = dispatch_engine.get_state(username)
+        return jsonify({**state, "notices": notices})
     except (KeyError, ValueError) as error:
         return jsonify({"error": str(error)}), 400
     except Exception as error:
@@ -761,6 +742,64 @@ def resume_dispatch(dispatch_id):
     except Exception:
         app.logger.exception("DISPATCH RESUME ERROR")
         return jsonify({"error": "Could not resume this dispatch."}), 500
+
+@app.route('/api/dispatch/<dispatch_id>/cancel', methods=['POST'])
+def cancel_dispatch(dispatch_id):
+    try:
+        return jsonify({"dispatch": dispatch_engine.cancel_dispatch(get_current_user(), dispatch_id)})
+    except (KeyError, ValueError) as error:
+        return jsonify({"error": str(error)}), 400
+    except Exception:
+        app.logger.exception("DISPATCH CANCEL ERROR")
+        return jsonify({"error": "Could not cancel this dispatch."}), 500
+
+@app.route('/api/engine/logs')
+def engine_logs_api():
+    try:
+        limit = max(1, min(int(request.args.get("limit", 150)), 500))
+        entries = dispatch_engine.get_logs(
+            get_current_user(), request.args.get("after"), limit
+        )
+        return jsonify({"entries": entries, "cursor": entries[-1]["id"] if entries else request.args.get("after")})
+    except Exception:
+        app.logger.exception("ENGINE LOGS ERROR")
+        return jsonify({"error": "Engine logs are unavailable."}), 500
+
+@app.route('/api/trailers', methods=['GET', 'POST'])
+def trailers_api():
+    username = get_current_user()
+    try:
+        if request.method == 'POST':
+            payload = request.get_json(silent=True) or {}
+            trailer = dispatch_engine.add_trailer(
+                username, payload.get("id"), payload.get("type"), payload.get("hub")
+            )
+            return jsonify({"trailer": trailer}), 201
+        return jsonify({
+            "trailers": dispatch_engine.list_trailers(username),
+            "warehouses": dispatch_engine.catalog()["warehouses"],
+        })
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except Exception:
+        app.logger.exception("TRAILER API ERROR")
+        return jsonify({"error": "Trailer records are unavailable."}), 500
+
+@app.route('/api/trailers/<trailer_id>', methods=['PATCH', 'DELETE'])
+def trailer_api(trailer_id):
+    try:
+        if request.method == 'DELETE':
+            dispatch_engine.delete_trailer(get_current_user(), trailer_id)
+            return jsonify({"status": "deleted"})
+        trailer = dispatch_engine.update_trailer(
+            get_current_user(), trailer_id, request.get_json(silent=True) or {}
+        )
+        return jsonify({"trailer": trailer})
+    except (KeyError, ValueError) as error:
+        return jsonify({"error": str(error)}), 400
+    except Exception:
+        app.logger.exception("TRAILER UPDATE ERROR")
+        return jsonify({"error": "Could not update this trailer."}), 500
 
 @app.route('/api/relay/discovery')
 def discovery():
