@@ -85,8 +85,8 @@
         .metric-value { display:block; margin-top:14px; color:#f4f7f8; font-size:1.75rem; line-height:1.1; font-variant-numeric:tabular-nums; }
         .metric-hint { display:block; margin-top:9px; color:#87949b; font-size:.8rem; }
         .analytics-main-grid { display:grid; grid-template-columns:minmax(0,1.65fr) minmax(300px,.85fr); gap:16px; margin-bottom:16px; }
-        .analytics-secondary-grid { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(310px,1fr); gap:16px; margin-bottom:16px; }
-        .analytics-panel { padding:21px; border-radius:20px; min-width:0; }
+        .analytics-secondary-grid { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(310px,1fr); gap:16px; margin-bottom:16px; align-items:stretch; }
+        .analytics-panel { padding:21px; border-radius:20px; min-width:0; position:relative; }
         .chart-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:8px; }
         .chart-heading h2 { margin:0; font-size:1.1rem; letter-spacing:.7px; color:#f3f6f7; }
         .chart-heading p { margin:6px 0 0; color:#8f9ca3; font-size:.83rem; }
@@ -96,9 +96,22 @@
         .analytics-chart { display:block; width:100%; height:260px; overflow:visible; }
         .analytics-chart text { fill:#8c999f; font:11px 'Bourgeois',sans-serif; }
         .chart-gridline { stroke:rgba(255,255,255,.09); stroke-width:1; }
-        .chart-series { fill:none; stroke-width:2.6; stroke-linejoin:miter; stroke-linecap:square; stroke-dasharray:900; stroke-dashoffset:900; animation:chart-draw 1.1s cubic-bezier(.25,.8,.25,1) forwards; }
+        .chart-series { fill:none; stroke-width:2.6; stroke-linejoin:miter; stroke-linecap:square; }
         .chart-series.dotted { stroke-dasharray:4 7; }
-        .chart-bar { transform-box:fill-box; transform-origin:bottom; animation:bar-rise .7s cubic-bezier(.2,.8,.2,1) both; }
+        .chart-point { stroke:#11171c; stroke-width:2; cursor:crosshair; }
+        .chart-bar { cursor:crosshair; }
+        .axis-title { fill:#b6c1c6 !important; font-size:10px !important; letter-spacing:1px; }
+        .chart-tooltip { display:none; position:absolute; z-index:10; min-width:155px; max-width:230px; padding:10px 12px; border:1px solid rgba(255,255,255,.18); border-radius:9px; background:rgba(11,16,19,.96); box-shadow:0 8px 24px rgba(0,0,0,.38); color:#eaf0f2; font-size:.78rem; line-height:1.55; pointer-events:none; backdrop-filter:blur(10px); }
+        .chart-tooltip strong { display:block; margin-bottom:3px; color:#fff; font-weight:600; }
+        .activity-panel,.live-fleet-panel { height:390px; min-height:390px; max-height:390px; overflow:hidden; display:flex; flex-direction:column; }
+        .activity-panel .chart-heading,.live-fleet-panel .chart-heading { flex:0 0 auto; }
+        .activity-panel .analytics-chart { flex:1 1 auto; min-height:0; height:255px; }
+        .activity-panel .chart-legend { flex:0 0 auto; margin-top:3px; }
+        .live-deliveries-list { display:block; flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:0 8px 0 0; scrollbar-width:thin; scrollbar-color:rgba(170,185,192,.5) rgba(255,255,255,.05); }
+        .live-deliveries-list::-webkit-scrollbar { display:block; width:6px; }
+        .live-deliveries-list::-webkit-scrollbar-track { background:rgba(255,255,255,.04); border-radius:4px; }
+        .live-deliveries-list::-webkit-scrollbar-thumb { background:rgba(170,185,192,.42); border-radius:4px; }
+        .live-delivery-row { padding:12px 5px; border-bottom:1px solid rgba(255,255,255,.07); }
         .cost-pie { width:185px; height:185px; margin:20px auto 13px; border-radius:50%; position:relative; background:conic-gradient(#63d6b0 0deg,#63d6b0 1deg,#7c91ff 1deg,#7c91ff 2deg,#f1ad60 2deg,#f1ad60 3deg); transform:scale(.72) rotate(-35deg); opacity:.35; animation:pie-in .9s cubic-bezier(.16,1,.3,1) .12s forwards; box-shadow:0 0 35px rgba(99,214,176,.08); }
         .cost-pie::after { content:""; position:absolute; inset:27%; border-radius:50%; background:rgba(13,18,21,.96); border:1px solid rgba(255,255,255,.1); }
         .pie-center { position:absolute; z-index:1; inset:0; display:grid; place-content:center; text-align:center; pointer-events:none; }
@@ -120,14 +133,12 @@
         .analytics-footnote { color:#849198; font-size:.78rem; line-height:1.6; margin:10px 2px 0; }
         .analytics-error { display:none; color:#ff9b9b; font-size:.88rem; margin:10px 0; }
         .metric-value.updated { animation:value-flash .55s ease; }
-        @keyframes chart-draw { to { stroke-dashoffset:0; } }
-        @keyframes bar-rise { from { transform:scaleY(.08); opacity:.3; } to { transform:scaleY(1); opacity:1; } }
         @keyframes pie-in { to { transform:scale(1) rotate(0); opacity:1; } }
         @keyframes value-flash { 50% { color:var(--accent-orange); text-shadow:0 0 18px var(--accent-glow); } }
         @media (max-width:1200px) { .analytics-metrics { grid-template-columns:repeat(3,minmax(0,1fr)); } }
         @media (max-width:850px) { .analytics-main-grid,.analytics-secondary-grid { grid-template-columns:1fr; } .analytics-heading { align-items:flex-start; flex-direction:column; } }
-        @media (max-width:560px) { .analytics-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; } .metric-card { min-height:110px; padding:14px; } .metric-value { font-size:1.35rem; } .analytics-panel { padding:16px; } .analytics-chart { height:220px; } }
-        @media (prefers-reduced-motion:reduce) { .chart-series,.chart-bar,.cost-pie,.metric-value.updated { animation:none !important; stroke-dashoffset:0; transform:none; opacity:1; } }
+        @media (max-width:560px) { .analytics-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; } .metric-card { min-height:110px; padding:14px; } .metric-value { font-size:1.35rem; } .analytics-panel { padding:16px; } .analytics-chart { height:220px; } .activity-panel,.live-fleet-panel { height:370px; min-height:370px; max-height:370px; } }
+        @media (prefers-reduced-motion:reduce) { .chart-series,.chart-bar,.chart-point,.cost-pie,.metric-value.updated { animation:none !important; transition:none !important; transform:none; opacity:1; } }
     </style>
 
     <header class="analytics-heading">
@@ -153,7 +164,8 @@
     <section class="analytics-main-grid">
         <article class="glass-panel analytics-panel">
             <div class="chart-heading"><div><h2>Financial performance</h2><p>Daily revenue and cost movement · sharp-line comparison</p></div><span class="metric-label">LAST 30 DAYS</span></div>
-            <svg class="analytics-chart" id="line-chart" viewBox="0 0 720 260" role="img" aria-label="Daily revenue, net profit, fuel and operating cost line chart"></svg>
+            <svg class="analytics-chart" id="line-chart" viewBox="0 0 720 280" role="img" aria-label="Daily revenue, net profit, fuel and operating cost line chart"></svg>
+            <div class="chart-tooltip" id="line-tooltip" role="status"></div>
             <div class="chart-legend" id="line-legend"></div>
         </article>
         <article class="glass-panel analytics-panel">
@@ -161,18 +173,20 @@
             <div class="cost-pie" id="cost-pie" role="img" aria-label="Fuel and delivery operating cost composition pie chart">
                 <div class="pie-center"><strong id="pie-total">$0</strong><span>TOTAL COST</span></div>
             </div>
+            <div class="chart-tooltip" id="pie-tooltip" role="status"></div>
             <div class="pie-legend" id="pie-legend"></div>
         </article>
     </section>
     <section class="analytics-secondary-grid">
-        <article class="glass-panel analytics-panel">
+        <article class="glass-panel analytics-panel activity-panel">
             <div class="chart-heading"><div><h2>Daily fleet activity</h2><p>Driven miles and completed deliveries</p></div><span class="metric-label">LAST 14 DAYS</span></div>
-            <svg class="analytics-chart" id="bar-chart" viewBox="0 0 600 250" role="img" aria-label="Daily miles and completed delivery bar chart"></svg>
+            <svg class="analytics-chart" id="bar-chart" viewBox="0 0 600 280" role="img" aria-label="Daily miles and completed delivery bar chart with miles and delivery axes"></svg>
+            <div class="chart-tooltip" id="bar-tooltip" role="status"></div>
             <div class="chart-legend" id="bar-legend"></div>
         </article>
-        <article class="glass-panel analytics-panel">
+        <article class="glass-panel analytics-panel live-fleet-panel">
             <div class="chart-heading"><div><h2>Live fleet snapshot</h2><p>Active trucks and trip progress</p></div></div>
-            <div id="live-deliveries" class="pie-legend"></div>
+            <div id="live-deliveries" class="pie-legend live-deliveries-list"></div>
         </article>
     </section>
     <details class="glass-panel records-panel">
