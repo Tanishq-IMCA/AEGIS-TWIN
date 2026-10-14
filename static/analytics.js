@@ -29,6 +29,13 @@
     const animations = new WeakMap();
     const lineCircles = new Map();
     const barDays = new Map();
+    const seenDispatchNotices = (() => {
+        try {
+            return new Set(JSON.parse(sessionStorage.getItem('dispatch_notices') || '[]'));
+        } catch (_) {
+            return new Set();
+        }
+    })();
 
     function layer(svg, name) {
         let group = svg.querySelector(`[data-layer="${name}"]`);
@@ -174,7 +181,7 @@
         metric('metric-operating', money(totals.operating_cost), totals.operating_cost);
         const assumptions = data.assumptions;
         document.getElementById('analytics-assumptions').textContent =
-            `Financials are estimates, not accounting records. Model assumptions: ${preciseMoney(assumptions.revenue_per_mile)}/mile revenue, ${number(assumptions.miles_per_gallon, 1)} MPG, ${preciseMoney(assumptions.fuel_price_per_gallon)}/gallon fuel, and ${preciseMoney(assumptions.fleet_cost_per_mile)}/mile fleet operating costs.`;
+            `Financials are estimates, not accounting records. Model assumptions: ${preciseMoney(assumptions.revenue_per_mile)}/mile revenue, ${number(assumptions.miles_per_gallon, 1)} MPG, ${preciseMoney(assumptions.fuel_price_per_gallon)}/gallon fuel, and ${preciseMoney(assumptions.fleet_cost_per_mile)}/mile fleet operating costs. Simulated 120 mph recovery is estimated against ${number(assumptions.overspeed_baseline_mph, 0)} mph and capped at ${number(assumptions.maximum_time_saved_per_delivery_minutes, 0)} minutes per delivery.`;
     }
 
     function renderLegend(elementId, series) {
@@ -183,9 +190,15 @@
         ).join('');
     }
 
-    function renderLineChart(daily) {
+    function formatUpdateTime(timestamp) {
+        return new Date(Number(timestamp) * 1000).toLocaleTimeString('en-US', {
+            hour: 'numeric', minute: '2-digit'
+        });
+    }
+
+    function renderLineChart(timeline, windowSize = 24) {
         const svg = document.getElementById('line-chart');
-        const rows = daily.slice(-30);
+        const rows = timeline.slice(-windowSize);
         const series = [
             { key: 'revenue', label: 'Revenue', color: colors.revenue },
             { key: 'profit', label: 'Net profit', color: colors.profit },
@@ -201,6 +214,9 @@
         const max = rawMax + padding;
         const span = max - min || 1;
         const baseline = top + plotHeight * (max / span);
+        const xAt = index => left + plotWidth * (
+            (windowSize - rows.length + index) / Math.max(1, windowSize - 1)
+        );
         const axes = layer(svg, 'axes');
         const paths = layer(svg, 'series');
         const pointsLayer = layer(svg, 'points');
@@ -213,22 +229,23 @@
             axes.appendChild(label);
         }
         const yTitle = svgEl('text', { x: 14, y: top + plotHeight / 2, 'text-anchor': 'middle', class: 'axis-title', transform: `rotate(-90 14 ${top + plotHeight / 2})` });
-        yTitle.textContent = 'USD PER DAY';
+        yTitle.textContent = 'USD PER DELIVERY';
         axes.appendChild(yTitle);
-        const dateTicks = rows.length ? [0, .25, .5, .75, 1] : [];
-        dateTicks.forEach(fraction => {
-            const index = Math.min(rows.length - 1, Math.round((rows.length - 1) * fraction));
-            const label = svgEl('text', { x: left + plotWidth * fraction, y: height - 19, 'text-anchor': 'middle' });
-            label.textContent = formatDay(rows[index].date);
+        const tickIndexes = rows.length
+            ? [...new Set([0, Math.round((rows.length - 1) / 4), Math.round((rows.length - 1) / 2), Math.round((rows.length - 1) * 3 / 4), rows.length - 1])]
+            : [];
+        tickIndexes.forEach(index => {
+            const label = svgEl('text', { x: xAt(index), y: height - 19, 'text-anchor': 'middle' });
+            label.textContent = formatUpdateTime(rows[index].recorded_at);
             axes.appendChild(label);
         });
         const xTitle = svgEl('text', { x: left + plotWidth / 2, y: height - 3, 'text-anchor': 'middle', class: 'axis-title' });
-        xTitle.textContent = 'DATE';
+        xTitle.textContent = 'DELIVERY UPDATES · OLDEST → NEWEST';
         axes.appendChild(xTitle);
 
         series.forEach(item => {
             const coordinates = rows.map((row, index) => {
-                const x = left + plotWidth * (rows.length < 2 ? .5 : index / (rows.length - 1));
+                const x = xAt(index);
                 const y = top + plotHeight * (max - (Number(row[item.key]) || 0)) / span;
                 return [x, y];
             });
@@ -250,8 +267,10 @@
                     bindTooltip(circle, 'line-tooltip');
                 }
                 const row = rows[index];
-                circle._tooltipHTML = `<strong>${escapeHtml(formatDay(row.date))}</strong>${escapeHtml(item.label)}: ${money(row[item.key])}`;
-                circle.setAttribute('aria-label', `${formatDay(row.date)}, ${item.label}: ${money(row[item.key])}`);
+                const route = `${row.origin || 'Origin'} → ${row.destination || 'Destination'}`;
+                const overspeed = row.overspeeding ? '<br><strong style="color:#f4ca55">OVERSPEED · 120 MPH</strong>' : '';
+                circle._tooltipHTML = `<strong>${escapeHtml(row.truck_id || 'Fleet update')} · ${escapeHtml(formatUpdateTime(row.recorded_at))}</strong>${escapeHtml(route)}<br>${escapeHtml(item.label)}: ${money(row[item.key])}<br>Distance: ${number(row.distance_miles)} mi · ${(Number(row.progress) * 100 || 0).toFixed(0)}% complete${overspeed}<br>Time recovered: ${number(row.time_saved_minutes, 1)} min`;
+                circle.setAttribute('aria-label', `${row.truck_id || 'Fleet update'}, ${item.label}: ${money(row[item.key])}, ${formatUpdateTime(row.recorded_at)}`);
                 animateAttributes(circle, { cx: x, cy: y, r: 4 });
                 return circle;
             });
@@ -406,7 +425,7 @@
         const body = document.getElementById('records-body');
         const ordered = [...records].sort((a, b) => Number(b.recorded_at || 0) - Number(a.recorded_at || 0));
         if (!ordered.length) {
-            body.innerHTML = '<tr><td colspan="10">No delivery records yet. Financial activity appears as deliveries move.</td></tr>';
+            body.innerHTML = '<tr><td colspan="12">No delivery records yet. Financial activity appears as deliveries move.</td></tr>';
             return;
         }
         body.innerHTML = ordered.map(item => {
@@ -417,8 +436,24 @@
                 <td>${number(item.distance_miles)}</td><td>${number(item.fuel_gallons, 2)}</td>
                 <td>${preciseMoney(item.revenue)}</td><td>${preciseMoney(item.fuel_cost)}</td>
                 <td>${preciseMoney(item.operating_cost)}</td><td>${preciseMoney(item.profit)}</td>
+                <td>${number(item.time_saved_minutes, 1)} min</td>
+                <td>${item.overspeed_event ? 'Simulated · 120 mph' : '—'}</td>
             </tr>`;
         }).join('');
+    }
+
+    function renderNotices(notices) {
+        notices.filter(item => item.warning && item.id && !seenDispatchNotices.has(item.id)).forEach(item => {
+            window.showNotice?.(
+                escapeHtml(item.title || 'OVERSPEED ALERT'),
+                escapeHtml(item.message || 'A truck is overspeeding at 120 mph to recover time.'),
+                4500, false, false, true
+            );
+            seenDispatchNotices.add(item.id);
+        });
+        try {
+            sessionStorage.setItem('dispatch_notices', JSON.stringify([...seenDispatchNotices].slice(-100)));
+        } catch (_) {}
     }
 
     async function refresh() {
@@ -427,11 +462,12 @@
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Analytics are unavailable.');
             renderMetrics(data);
-            renderLineChart(data.daily || []);
+            renderLineChart(data.timeline || [], data.assumptions.analytics_window_size || 24);
             renderPie(data);
             renderBarChart(data.daily || []);
             renderLive(data.records || [], data.assumptions);
             renderRecords(data.records || []);
+            renderNotices(data.notices || []);
             document.getElementById('analytics-error').style.display = 'none';
         } catch (error) {
             const notice = document.getElementById('analytics-error');

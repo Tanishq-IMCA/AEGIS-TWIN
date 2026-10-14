@@ -878,21 +878,22 @@
             const fsIcon = fsBtn.querySelector('i');
 
             // --- THEME & WALLPAPER SYSTEM ---
-            window.showNotice = function(title, status, duration = 3000, showBlur = true, isError = false) {
+            window.showNotice = function(title, status, duration = 3000, showBlur = true, isError = false, isWarning = false) {
                 const container = document.getElementById('nexus-notice-container');
                 const overlay = document.getElementById('nexus-transition-overlay');
                 
                 // Create unique notice element
                 const notice = document.createElement('div');
-                notice.className = 'nexus-notice';
+                notice.className = `nexus-notice${isWarning ? ' warning' : ''}`;
                 
-                const barColor = isError ? '#ff4444' : 'var(--accent-orange)';
-                const barShadow = isError ? '0 0 15px rgba(255, 68, 68, 0.5)' : '0 0 15px var(--accent-glow)';
+                const barColor = isError ? '#ff4444' : isWarning ? '#f4ca55' : 'var(--accent-orange)';
+                const barShadow = isError ? '0 0 15px rgba(255, 68, 68, 0.5)' : isWarning ? '0 0 15px rgba(244, 202, 85, 0.55)' : '0 0 15px var(--accent-glow)';
+                const titleColor = isWarning ? '#f4ca55' : 'white';
                 
                 notice.innerHTML = `
                     <div class="notice-bar" style="background: ${barColor}; box-shadow: ${barShadow};"></div>
                     <div class="notice-text">
-                        <div style="font-family: var(--font-title); color: white; font-size: 1.1rem; letter-spacing: 1px; line-height: 1.2;">${title}</div>
+                        <div style="font-family: var(--font-title); color: ${titleColor}; font-size: 1.1rem; letter-spacing: 1px; line-height: 1.2;">${title}</div>
                         <div style="font-family: var(--font-body); color: white; font-size: 0.85rem; opacity: 0.9; letter-spacing: 0.5px;">${status}</div>
                     </div>
                 `;

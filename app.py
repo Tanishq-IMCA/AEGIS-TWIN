@@ -684,6 +684,7 @@ def analytics_csv():
             "recorded_at_utc", "status", "truck_id", "origin", "destination",
             "distance_miles", "fuel_gallons", "revenue_usd", "fuel_cost_usd",
             "delivery_operating_cost_usd", "net_profit_usd", "time_saved_minutes",
+            "overspeed_time_saved_minutes", "overspeed_event",
         ])
         for item in data["records"]:
             try:
@@ -699,6 +700,8 @@ def analytics_csv():
                 item.get("revenue", 0), item.get("fuel_cost", 0),
                 item.get("operating_cost", 0), item.get("profit", 0),
                 item.get("time_saved_minutes", 0),
+                item.get("overspeed_time_saved_minutes", 0),
+                item.get("overspeed_event", False),
             ])
         response = Response(output.getvalue(), mimetype="text/csv")
         disposition = "attachment" if request.args.get("download") == "1" else "inline"

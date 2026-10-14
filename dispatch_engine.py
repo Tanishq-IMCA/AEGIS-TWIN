@@ -45,12 +45,20 @@ _LOG_KEY = "engine_logs"
 _AUTONOMY_KEY = "dispatch_autonomy"
 _NOTICE_KEY = "dispatch_notifications"
 _FINANCE_KEY = "delivery_finance_ledger"
+_TIMELINE_KEY = "delivery_analytics_timeline"
 _AUTONOMY_LOCK = RLock()
 _EARTH_MILES = 3958.8
 REVENUE_PER_MILE = 5.25
 FUEL_PRICE_PER_GALLON = 4.25
 FLEET_COST_PER_MILE = 1.15
 FLEET_MILES_PER_GALLON = 6.5
+OVERSPEED_CHANCE = 0.10
+OVERSPEED_MPH = 120
+OVERSPEED_BASELINE_MPH = 65
+OVERSPEED_DURATION_SECONDS = 45
+MAX_TIME_SAVED_PER_DELIVERY_MINUTES = 15
+ANALYTICS_WINDOW_SIZE = 24
+ANALYTICS_SAMPLE_SECONDS = 10
 
 
 def _state_locked(function):
@@ -113,6 +121,7 @@ def _build_dispatch(origin, destination, truck_id, progress=0, demo=False):
     target_speed = _target_speed(miles) if not demo else random.choice([50, 90])
     eta_minutes = max(3, round(miles / target_speed * 60))
     now = time.time()
+    overspeed_eligible = not demo and random.random() < OVERSPEED_CHANCE
     start_time = now - eta_minutes * 60 * progress
     return {
         "id": uuid.uuid4().hex[:10],
@@ -132,6 +141,12 @@ def _build_dispatch(origin, destination, truck_id, progress=0, demo=False):
         "started_at": start_time,
         "last_tick": now,
         "incident_at": random.uniform(0.22, 0.78) if not demo and random.random() < 0.05 else None,
+        "overspeed_eligible": overspeed_eligible,
+        "overspeed_trigger_progress": random.uniform(0.18, 0.76) if overspeed_eligible else None,
+        "overspeed_triggered": False,
+        "overspeed_until": None,
+        "overspeed_time_saved_minutes": 0,
+        "overspeeding": False,
         "status": "en_route",
         "assistance_requested_at": None,
         "last_log_speed": target_speed,
@@ -224,6 +239,16 @@ def _finance_record(dispatch, status, recorded_at=None):
     operating_cost = miles * FLEET_COST_PER_MILE
     duration = float(dispatch.get("duration_minutes", 0) or 0)
     expected = float(dispatch.get("expected_duration_minutes", dispatch.get("eta_minutes", 0)) or 0)
+    overspeed_saved = min(
+        MAX_TIME_SAVED_PER_DELIVERY_MINUTES,
+        max(0, float(dispatch.get("overspeed_time_saved_minutes", 0) or 0)),
+    )
+    time_saved = overspeed_saved if status == "in_transit" else 0
+    if status == "completed":
+        time_saved = min(
+            MAX_TIME_SAVED_PER_DELIVERY_MINUTES,
+            max(overspeed_saved, max(0, expected - duration)),
+        )
     return {
         "id": dispatch.get("id"),
         "truck_id": dispatch.get("truck_id", ""),
@@ -234,12 +259,16 @@ def _finance_record(dispatch, status, recorded_at=None):
         "distance_miles": round(miles, 2),
         "route_distance_miles": round(total_miles, 2),
         "progress": max(0, min(1, float(dispatch.get("progress", 1 if status == "completed" else 0) or 0))),
+        "speed_mph": round(float(dispatch.get("speed_mph", 0) or 0), 1),
+        "overspeeding": bool(dispatch.get("overspeeding")),
         "fuel_gallons": round(gallons, 2),
         "revenue": round(revenue, 2),
         "fuel_cost": round(fuel_cost, 2),
         "operating_cost": round(operating_cost, 2),
         "profit": round(revenue - fuel_cost - operating_cost, 2),
-        "time_saved_minutes": round(max(0, expected - duration), 1) if status == "completed" else 0,
+        "time_saved_minutes": round(time_saved, 1),
+        "overspeed_time_saved_minutes": round(overspeed_saved, 1),
+        "overspeed_event": bool(dispatch.get("overspeed_triggered")),
     }
 
 
@@ -285,6 +314,7 @@ def _advance(username, state):
         old_status = dispatch["status"]
         if dispatch["status"] in {"needs_assistance", "assistance_requested"}:
             dispatch["last_tick"] = now
+            dispatch["overspeeding"] = False
             remaining.append(dispatch)
             log_entries.append(("ROADSIDE_WAIT", "Truck is holding position for roadside support.", dispatch, "WARN"))
             continue
@@ -292,9 +322,44 @@ def _advance(username, state):
         elapsed = max(0, min(now - dispatch.get("last_tick", now), 60))
         dispatch["last_tick"] = now
         old_speed = dispatch.get("speed_mph", dispatch["target_speed_mph"])
-        dispatch["speed_mph"] = _current_speed(dispatch, elapsed)
+        old_overspeeding = bool(dispatch.get("overspeeding"))
+        normal_speed = _current_speed(dispatch, elapsed)
+        if (
+            dispatch.get("overspeed_eligible")
+            and not dispatch.get("overspeed_triggered")
+            and dispatch["progress"] >= float(dispatch.get("overspeed_trigger_progress") or 1)
+            and normal_speed >= dispatch["target_speed_mph"]
+        ):
+            dispatch["overspeed_triggered"] = True
+            dispatch["overspeed_until"] = now + OVERSPEED_DURATION_SECONDS
+            message = f"{dispatch['truck_id']} is overspeeding at {OVERSPEED_MPH} mph to recover time."
+            notices.append({
+                "id": f"overspeed-{dispatch['id']}",
+                "title": "OVERSPEED ALERT",
+                "message": message,
+                "error": False,
+                "warning": True,
+            })
+            log_entries.append(("TRUCK_OVERSPEEDING", message, dispatch, "WARN"))
+
+        overspeed_active = (
+            dispatch.get("overspeed_triggered")
+            and now < float(dispatch.get("overspeed_until") or 0)
+            and normal_speed >= dispatch["target_speed_mph"]
+        )
+        dispatch["overspeeding"] = bool(overspeed_active)
+        dispatch["speed_mph"] = OVERSPEED_MPH if overspeed_active else normal_speed
         miles_moved = ((old_speed + dispatch["speed_mph"]) / 2) * elapsed / 3600
+        average_speed = (old_speed + dispatch["speed_mph"]) / 2
+        if dispatch.get("overspeed_triggered") and average_speed > OVERSPEED_BASELINE_MPH:
+            saved = miles_moved * 60 * (1 / OVERSPEED_BASELINE_MPH - 1 / average_speed)
+            dispatch["overspeed_time_saved_minutes"] = min(
+                MAX_TIME_SAVED_PER_DELIVERY_MINUTES,
+                max(0, float(dispatch.get("overspeed_time_saved_minutes", 0) or 0) + saved),
+            )
         dispatch["progress"] = min(1, dispatch["progress"] + miles_moved / dispatch["distance_miles"])
+        if old_overspeeding and not dispatch["overspeeding"]:
+            log_entries.append(("OVERSPEED_ENDED", "Truck returned to its regular speed profile.", dispatch, "INFO"))
 
         incident_at = dispatch.get("incident_at")
         if incident_at is not None and dispatch["progress"] >= incident_at:
@@ -515,9 +580,93 @@ def get_state(username):
     return state, notices
 
 
+def _timeline_point(record, recorded_at, event):
+    return {
+        "id": record.get("id"),
+        "truck_id": record.get("truck_id", ""),
+        "origin": record.get("origin", ""),
+        "destination": record.get("destination", ""),
+        "status": record.get("status", ""),
+        "event": event,
+        "recorded_at": float(recorded_at),
+        "progress": round(float(record.get("progress", 1) or 0), 4),
+        "distance_miles": round(float(record.get("distance_miles", 0) or 0), 2),
+        "speed_mph": round(float(record.get("speed_mph", 0) or 0), 1),
+        "overspeeding": bool(record.get("overspeeding")),
+        "revenue": round(float(record.get("revenue", 0) or 0), 2),
+        "profit": round(float(record.get("profit", 0) or 0), 2),
+        "fuel_cost": round(float(record.get("fuel_cost", 0) or 0), 2),
+        "operating_cost": round(float(record.get("operating_cost", 0) or 0), 2),
+        "time_saved_minutes": round(float(record.get("time_saved_minutes", 0) or 0), 1),
+    }
+
+
+def _update_analytics_timeline(username, state, records, now):
+    saved = storage_manager.get_data(username, _TIMELINE_KEY)
+    saved = saved if isinstance(saved, dict) else {}
+    points = [item for item in saved.get("points", []) if isinstance(item, dict)]
+    completed_cursor = float(saved.get("completed_cursor_at", 0) or 0)
+    completed_cursor_ids = set(saved.get("completed_cursor_ids", []))
+    last_samples = saved.get("last_active_samples", {})
+    last_samples = last_samples if isinstance(last_samples, dict) else {}
+
+    completed = sorted(
+        (item for item in records if item.get("status") == "completed"),
+        key=lambda item: float(item.get("recorded_at", 0) or 0),
+    )
+    if not saved.get("initialized"):
+        points = [
+            _timeline_point(item, item.get("recorded_at", now), "completed")
+            for item in completed[-ANALYTICS_WINDOW_SIZE:]
+        ]
+        if completed:
+            completed_cursor = max(float(item.get("recorded_at", 0) or 0) for item in completed)
+            completed_cursor_ids = {
+                item.get("id") for item in completed
+                if float(item.get("recorded_at", 0) or 0) == completed_cursor
+            }
+    else:
+        for item in completed:
+            recorded_at = float(item.get("recorded_at", 0) or 0)
+            item_id = item.get("id")
+            if recorded_at < completed_cursor or (
+                recorded_at == completed_cursor and item_id in completed_cursor_ids
+            ):
+                continue
+            points.append(_timeline_point(item, recorded_at, "completed"))
+            if recorded_at > completed_cursor:
+                completed_cursor = recorded_at
+                completed_cursor_ids = {item_id}
+            else:
+                completed_cursor_ids.add(item_id)
+
+    active_ids = set()
+    for dispatch in state["active"]:
+        dispatch_id = dispatch.get("id")
+        if not dispatch_id:
+            continue
+        active_ids.add(dispatch_id)
+        last_sample = float(last_samples.get(dispatch_id, 0) or 0)
+        if now - last_sample >= ANALYTICS_SAMPLE_SECONDS:
+            snapshot = _finance_record(dispatch, "in_transit", now)
+            points.append(_timeline_point(snapshot, now, "update"))
+            last_samples[dispatch_id] = now
+    last_samples = {key: value for key, value in last_samples.items() if key in active_ids}
+    points.sort(key=lambda item: float(item.get("recorded_at", 0) or 0))
+    points = points[-ANALYTICS_WINDOW_SIZE:]
+    storage_manager.save_data(username, _TIMELINE_KEY, {
+        "initialized": True,
+        "points": points,
+        "completed_cursor_at": completed_cursor,
+        "completed_cursor_ids": list(completed_cursor_ids)[-100:],
+        "last_active_samples": last_samples,
+    })
+    return points
+
+
 @_state_locked
 def get_analytics(username):
-    state, _ = get_state(username)
+    state, notices = get_state(username)
     ledger = storage_manager.get_data(username, _FINANCE_KEY)
     records = [item for item in ledger if isinstance(item, dict)] if isinstance(ledger, list) else []
     known_ids = {item.get("id") for item in records}
@@ -529,16 +678,19 @@ def get_analytics(username):
         current = _finance_record(dispatch, "cancelled", dispatch.get("cancelled_at"))
         if current["id"] not in known_ids:
             records.append(current)
+    timeline = _update_analytics_timeline(username, state, records, time.time())
 
     totals = {
         key: round(sum(float(item.get(key, 0) or 0) for item in records), 2)
         for key in (
             "revenue", "fuel_cost", "operating_cost", "profit",
             "distance_miles", "fuel_gallons", "time_saved_minutes",
+            "overspeed_time_saved_minutes",
         )
     }
     totals["completed_deliveries"] = sum(item.get("status") == "completed" for item in records)
     totals["active_deliveries"] = len(state["active"])
+    totals["overspeed_events"] = sum(bool(item.get("overspeed_event")) for item in records)
     totals["total_cost"] = round(totals["fuel_cost"] + totals["operating_cost"], 2)
 
     daily = {}
@@ -565,12 +717,17 @@ def get_analytics(username):
              for key, value in bucket.items()}
             for _, bucket in sorted(daily.items())[-30:]
         ],
+        "timeline": timeline,
+        "notices": notices,
         "totals": totals,
         "assumptions": {
             "revenue_per_mile": REVENUE_PER_MILE,
             "fuel_price_per_gallon": FUEL_PRICE_PER_GALLON,
             "fleet_cost_per_mile": FLEET_COST_PER_MILE,
             "miles_per_gallon": FLEET_MILES_PER_GALLON,
+            "overspeed_baseline_mph": OVERSPEED_BASELINE_MPH,
+            "maximum_time_saved_per_delivery_minutes": MAX_TIME_SAVED_PER_DELIVERY_MINUTES,
+            "analytics_window_size": ANALYTICS_WINDOW_SIZE,
         },
     }
 

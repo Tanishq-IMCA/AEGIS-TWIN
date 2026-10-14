@@ -90,8 +90,8 @@
         });
     }
 
-    function notice(title, message, error = false) {
-        window.showNotice?.(esc(title), esc(message), 3500, false, error);
+    function notice(title, message, error = false, warning = false) {
+        window.showNotice?.(esc(title), esc(message), 3500, false, error, warning);
     }
 
     function installCatalog(data) {
@@ -376,7 +376,7 @@
         const seen = new Set(JSON.parse(sessionStorage.getItem('dispatch_notices') || '[]'));
         (state.notices || []).forEach(item => {
             if (seen.has(item.id)) return;
-            notice(item.title, item.message, item.error);
+            notice(item.title, item.message, item.error, item.warning);
             seen.add(item.id);
         });
         sessionStorage.setItem('dispatch_notices', JSON.stringify([...seen].slice(-100)));

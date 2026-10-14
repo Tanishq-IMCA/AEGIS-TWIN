@@ -158,13 +158,13 @@
         <article class="glass-panel metric-card"><span class="metric-label">Net operating profit</span><strong class="metric-value" id="metric-profit">$0</strong><span class="metric-hint">After fuel and delivery costs</span></article>
         <article class="glass-panel metric-card"><span class="metric-label">Fuel consumed</span><strong class="metric-value" id="metric-fuel">0 gal</strong><span class="metric-hint" id="metric-fuel-cost">$0 estimated fuel cost</span></article>
         <article class="glass-panel metric-card"><span class="metric-label">Distance travelled</span><strong class="metric-value" id="metric-distance">0 mi</strong><span class="metric-hint" id="metric-deliveries">0 completed deliveries</span></article>
-        <article class="glass-panel metric-card"><span class="metric-label">Time saved</span><strong class="metric-value" id="metric-time">0 min</strong><span class="metric-hint">Against planned delivery time</span></article>
+        <article class="glass-panel metric-card"><span class="metric-label">Time saved</span><strong class="metric-value" id="metric-time">0 min</strong><span class="metric-hint">Includes capped simulated speed recovery</span></article>
         <article class="glass-panel metric-card"><span class="metric-label">Delivery operating costs</span><strong class="metric-value" id="metric-operating">$0</strong><span class="metric-hint">Estimated fleet costs carried</span></article>
     </section>
     <section class="analytics-main-grid">
         <article class="glass-panel analytics-panel">
-            <div class="chart-heading"><div><h2>Financial performance</h2><p>Daily revenue and cost movement · sharp-line comparison</p></div><span class="metric-label">LAST 30 DAYS</span></div>
-            <svg class="analytics-chart" id="line-chart" viewBox="0 0 720 280" role="img" aria-label="Daily revenue, net profit, fuel and operating cost line chart"></svg>
+            <div class="chart-heading"><div><h2>Financial performance</h2><p>Rolling revenue, profit, and carried costs per delivery update</p></div><span class="metric-label">ROLLING · LAST 24 UPDATES</span></div>
+            <svg class="analytics-chart" id="line-chart" viewBox="0 0 720 280" role="img" aria-label="Rolling per-delivery revenue, net profit, fuel, and operating cost line chart"></svg>
             <div class="chart-tooltip" id="line-tooltip" role="status"></div>
             <div class="chart-legend" id="line-legend"></div>
         </article>
@@ -191,7 +191,7 @@
     </section>
     <details class="glass-panel records-panel">
         <summary><span><i class="fa-solid fa-file-csv"></i> Browse delivery records</span><span>Includes revenue, costs, distance, fuel, and time saved</span></summary>
-        <div class="records-content"><div class="records-scroll"><table class="records-table"><thead><tr><th>Recorded</th><th>Status</th><th>Truck</th><th>Route</th><th>Miles</th><th>Fuel gal</th><th>Revenue</th><th>Fuel cost</th><th>Delivery cost</th><th>Net profit</th></tr></thead><tbody id="records-body"></tbody></table></div></div>
+            <div class="records-content"><div class="records-scroll"><table class="records-table"><thead><tr><th>Recorded</th><th>Status</th><th>Truck</th><th>Route</th><th>Miles</th><th>Fuel gal</th><th>Revenue</th><th>Fuel cost</th><th>Delivery cost</th><th>Net profit</th><th>Time saved</th><th>Overspeed event</th></tr></thead><tbody id="records-body"></tbody></table></div></div>
     </details>
     <p class="analytics-footnote" id="analytics-assumptions">Financials are operating estimates, not accounting records. Current model: revenue per mile, fuel economy, fuel price, and fleet cost per mile are shown in the chart data assumptions.</p>
     <script src="{{ url_for('static', filename='analytics.js') }}" defer></script>
