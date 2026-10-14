@@ -70,27 +70,78 @@
         0% { transform: translateX(-200%); }
         100% { transform: translateX(200%); }
     }
+    .calendar-page { max-width:1250px; margin:0 auto; color:#e1e6ea; }
+    .calendar-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:16px 0; }
+    .calendar-toolbar h2 { margin:0; font:1.15rem var(--font-title); letter-spacing:.7px; }
+    .calendar-toolbar-actions { display:flex; align-items:center; gap:7px; }
+    .calendar-toolbar button { border:1px solid rgba(255,255,255,.1); border-radius:7px; background:rgba(255,255,255,.04); color:#dce2e7; padding:8px 11px; cursor:pointer; }
+    .calendar-toolbar button:hover { background:rgba(255,255,255,.09); }
+    .calendar-layout { display:grid; grid-template-columns:minmax(0,1.8fr) minmax(250px,.85fr); gap:12px; align-items:stretch; }
+    .calendar-glass,.calendar-agenda { border:1px solid rgba(255,255,255,.09); border-radius:13px; background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.012)); backdrop-filter:blur(18px); box-shadow:0 16px 40px rgba(0,0,0,.2); }
+    .calendar-glass { padding:12px; }
+    .calendar-weekdays,.calendar-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); }
+    .calendar-weekdays { color:#7f8b94; font:.58rem var(--font-title); letter-spacing:.7px; text-align:center; padding-bottom:8px; }
+    .calendar-day { position:relative; min-width:0; min-height:92px; border:1px solid rgba(255,255,255,.045); border-radius:7px; background:rgba(6,10,13,.34); color:#dce2e7; text-align:left; padding:7px; cursor:pointer; transition:background .18s,border-color .18s,transform .18s; }
+    .calendar-day:hover { background:rgba(255,255,255,.055); border-color:rgba(255,255,255,.16); transform:translateY(-1px); }
+    .calendar-day.outside-month { color:#5e6971; background:rgba(0,0,0,.14); }
+    .calendar-day.today .calendar-day-number { color:#91d8ad; border-color:rgba(125,211,158,.55); }
+    .calendar-day.selected { border-color:rgba(128,190,222,.5); background:rgba(69,117,145,.12); }
+    .calendar-day-number { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border:1px solid transparent; border-radius:50%; font:.67rem var(--font-title); }
+    .calendar-day-events { display:flex; flex-direction:column; gap:3px; margin-top:5px; }
+    .calendar-event-chip { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-left:2px solid #8bcba5; border-radius:2px; background:rgba(119,194,148,.1); padding:3px 4px; color:#b9d9c5; font-size:.53rem; }
+    .calendar-event-chip.order { border-color:#7eb7d7; background:rgba(92,156,194,.12); color:#b8d6e6; }
+    .calendar-event-chip.delayed,.calendar-event-chip.task { border-color:#d5bb6e; background:rgba(213,187,110,.1); color:#dfd09a; }
+    .calendar-event-chip.attention,.calendar-event-chip.cancelled { border-color:#d77c83; background:rgba(215,124,131,.1); color:#e1afb2; }
+    .calendar-more { color:#8b969e; font-size:.52rem; padding-left:4px; }
+    .calendar-agenda { padding:15px; }
+    .calendar-agenda h3 { margin:0; color:#dfe5e9; font: .72rem var(--font-title); letter-spacing:.8px; }
+    .calendar-agenda-date { margin:6px 0 13px; color:#7f8b94; font-size:.67rem; }
+    .calendar-event-list { display:flex; flex-direction:column; gap:8px; }
+    .calendar-event { display:grid; grid-template-columns:44px 1fr; gap:9px; border:1px solid rgba(255,255,255,.07); border-left:2px solid #8bcba5; border-radius:8px; background:rgba(255,255,255,.025); padding:9px; }
+    .calendar-event.order { border-left-color:#7eb7d7; }
+    .calendar-event.task { border-left-color:#d5bb6e; }
+    .calendar-event.attention,.calendar-event.cancelled { border-left-color:#d77c83; }
+    .calendar-event-time { color:#89959d; font:.57rem var(--font-title); }
+    .calendar-event-title { color:#dce2e7; font-size:.67rem; line-height:1.4; }
+    .calendar-event-subtitle { margin-top:3px; color:#829099; font-size:.59rem; }
+    .calendar-empty { color:#7f8b94; padding:16px 4px; font-size:.66rem; line-height:1.6; }
+    .calendar-legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:10px; color:#87929a; font-size:.58rem; }
+    .calendar-legend span { display:flex; align-items:center; gap:5px; }
+    .calendar-legend i { width:7px; height:7px; border-radius:50%; background:#7eb7d7; }
+    .calendar-legend .legend-task { background:#d5bb6e; }
+    .calendar-legend .legend-delivery { background:#8bcba5; }
+    @media(max-width:850px) { .calendar-layout { grid-template-columns:1fr; } .calendar-day { min-height:75px; padding:5px; } }
+    @media(max-width:520px) { .calendar-day { min-height:61px; } .calendar-event-chip { font-size:.46rem; } .calendar-glass { padding:6px; } }
 </style>
 
-{% include "_page_header.html" %}
-<div style="min-height: calc(100vh - 190px); display: flex; align-items: center; justify-content: center;">
-
-    <div class="glass-panel" style="text-align: center; padding: 60px; max-width: 500px;">
-
-        <div style="font-size: 3rem; color: var(--accent-orange); margin-bottom: 20px;">
-            <i class="fa-solid fa-screwdriver-wrench"></i>
+<main class="calendar-page">
+    {% include "_page_header.html" %}
+    <div class="calendar-toolbar">
+        <h2 id="calendar-month-label">Loading calendar…</h2>
+        <div class="calendar-toolbar-actions">
+            <button id="calendar-today" type="button">TODAY</button>
+            <button id="calendar-prev" type="button" aria-label="Previous month"><i class="fa-solid fa-chevron-left"></i></button>
+            <button id="calendar-next" type="button" aria-label="Next month"><i class="fa-solid fa-chevron-right"></i></button>
         </div>
-
-        <p class="label" style="font-size: 1.2rem !important;">
-            Module Under Development
-        </p>
-
-        <p style="color: var(--text-muted); margin-top: 20px;">
-            This sector of the IMCA Nexus is currently being built.
-            Return to the Dashboard for active operations.
-        </p>
-
     </div>
-
-</div>
+    <div class="calendar-layout">
+        <section class="calendar-glass" aria-label="Monthly order calendar">
+            <div class="calendar-weekdays" aria-hidden="true">
+                <span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span><span>SUN</span>
+            </div>
+            <div class="calendar-grid" id="calendar-grid"></div>
+        </section>
+        <aside class="calendar-agenda">
+            <h3>DAY SCHEDULE</h3>
+            <p class="calendar-agenda-date" id="calendar-selected-date"></p>
+            <div class="calendar-event-list" id="calendar-event-list"><div class="calendar-empty">Loading scheduled work…</div></div>
+        </aside>
+    </div>
+    <div class="calendar-legend">
+        <span><i class="legend-delivery"></i> Deliveries</span>
+        <span><i></i> Orders & appointments</span>
+        <span><i class="legend-task"></i> Task deadlines</span>
+    </div>
+</main>
+<script src="{{ url_for('static', filename='calendar.js') }}"></script>
 {% endblock %}

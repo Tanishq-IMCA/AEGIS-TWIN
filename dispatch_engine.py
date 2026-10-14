@@ -255,13 +255,16 @@ def _advance(username, state):
             completed_now.append({
                 "id": dispatch["id"],
                 "truck_id": dispatch["truck_id"],
+                "trailer_id": dispatch.get("trailer_id"),
                 "origin_name": dispatch["origin_name"],
                 "destination_name": dispatch["destination_name"],
                 "duration_minutes": round(duration, 1),
                 "eta_minutes": dispatch["expected_duration_minutes"],
                 "timing": timing,
                 "arrived_at": now,
+                "status": "completed",
             })
+            _sync_trailer(username, dispatch, "completed", finished=True)
             delivery = completed_now[-1]
             message = f"{dispatch['truck_id']} completed delivery to {dispatch['destination_name']}."
             notices.append({"id": f"complete-{dispatch['id']}", "title": "DELIVERY COMPLETED", "message": message, "error": False})
@@ -285,7 +288,11 @@ def _advance(username, state):
 
 def get_state(username):
     state = _load_state(username)
+    for dispatch in state["active"]:
+        _assign_trailer(username, dispatch)
     notices = _advance(username, state)
+    for dispatch in state["active"]:
+        _sync_trailer(username, dispatch, dispatch["status"])
     storage_manager.save_data(username, _STATE_KEY, state)
     return state, notices
 
@@ -301,6 +308,7 @@ def create_dispatch(username, origin_id=None, destination_id=None):
     while f"AEGIS-{truck_number}" in used_trucks:
         truck_number = random.randint(100, 999)
     dispatch = _build_dispatch(origin, destination, f"AEGIS-{truck_number}")
+    _assign_trailer(username, dispatch)
     state["active"].append(dispatch)
     storage_manager.save_data(username, _STATE_KEY, state)
     incident_rate = "5% incident chance assigned." if dispatch["incident_at"] is not None else "No incident assigned."
@@ -349,6 +357,7 @@ def cancel_dispatch(username, dispatch_id):
     dispatch["cancelled_at"] = time.time()
     state["active"].remove(dispatch)
     state["cancelled"] = ([dispatch] + state["cancelled"])[:50]
+    _sync_trailer(username, dispatch, "cancelled", finished=True)
     storage_manager.save_data(username, _STATE_KEY, state)
     _append_logs(username, [("DISPATCH_CANCELLED", "Operator cancelled the dispatch.", dispatch, "WARN")])
     return dispatch
@@ -382,8 +391,101 @@ def _trailers(username):
     return trailers
 
 
+def _assign_trailer(username, dispatch):
+    trailers = _trailers(username)
+    assigned = next((item for item in trailers if item.get("dispatch_id") == dispatch["id"]), None)
+    if assigned is None:
+        assigned = next((item for item in trailers
+                         if item.get("status") == "available" and not item.get("dispatch_id")), None)
+    if assigned is None:
+        used_ids = {item.get("id") for item in trailers}
+        suffix = 1
+        while f"TRL-AUTO-{suffix:03d}" in used_ids:
+            suffix += 1
+        assigned = {
+            "id": f"TRL-AUTO-{suffix:03d}",
+            "type": "Dry Van",
+            "hub": dispatch.get("origin_id", "sodo"),
+            "status": "available",
+            "auto_generated": True,
+        }
+        trailers.append(assigned)
+    desired = {
+        "status": "assigned",
+        "dispatch_id": dispatch["id"],
+        "assigned_truck_id": dispatch["truck_id"],
+        "dispatch_status": dispatch.get("status", "en_route"),
+    }
+    changed = any(assigned.get(key) != value for key, value in desired.items())
+    assigned.update(desired)
+    if changed:
+        storage_manager.save_data(username, "trailers", trailers)
+    dispatch["trailer_id"] = assigned["id"]
+
+
+def _sync_trailer(username, dispatch, status, finished=False):
+    trailer_id = dispatch.get("trailer_id")
+    if not trailer_id:
+        return
+    trailers = _trailers(username)
+    trailer = next((item for item in trailers if item.get("id") == trailer_id), None)
+    if not trailer:
+        return
+    previous = dict(trailer)
+    if finished:
+        trailer["last_dispatch_id"] = dispatch["id"]
+        trailer["last_dispatch_status"] = status
+        trailer["last_truck_id"] = dispatch.get("truck_id")
+        trailer["last_destination_name"] = dispatch.get("destination_name")
+        trailer.pop("dispatch_id", None)
+        trailer.pop("assigned_truck_id", None)
+        trailer.pop("dispatch_status", None)
+        if trailer.get("status") == "assigned":
+            trailer["status"] = "available"
+    else:
+        trailer["dispatch_id"] = dispatch["id"]
+        trailer["assigned_truck_id"] = dispatch.get("truck_id")
+        trailer["dispatch_status"] = status
+        trailer["status"] = "assigned"
+    if trailer != previous:
+        storage_manager.save_data(username, "trailers", trailers)
+
+
 def list_trailers(username):
-    return _trailers(username)
+    state, _ = get_state(username)
+    dispatches = {}
+    for status, items in (
+        ("en_route", state["active"]),
+        ("completed", state["completed"]),
+        ("cancelled", state["cancelled"]),
+    ):
+        for dispatch in items:
+            dispatches[dispatch.get("id")] = {**dispatch, "status": dispatch.get("status", status)}
+    result = []
+    for trailer in _trailers(username):
+        item = dict(trailer)
+        dispatch = dispatches.get(item.get("dispatch_id") or item.get("last_dispatch_id"))
+        if dispatch:
+            item.update({
+                "dispatch_status": dispatch.get("status", item.get("last_dispatch_status")),
+                "truck_id": dispatch.get("truck_id", item.get("last_truck_id")),
+                "destination_name": dispatch.get("destination_name", item.get("last_destination_name")),
+                "speed_mph": dispatch.get("speed_mph", 0),
+                "progress": dispatch.get("progress", 1 if dispatch.get("status") == "completed" else 0),
+                "started_at": dispatch.get("started_at"),
+                "expected_duration_minutes": dispatch.get("expected_duration_minutes", dispatch.get("eta_minutes")),
+                "dispatch_active": dispatch in state["active"],
+            })
+        else:
+            item.update({
+                "dispatch_status": item.get("last_dispatch_status"),
+                "truck_id": item.get("last_truck_id"),
+                "destination_name": item.get("last_destination_name"),
+                "progress": 1 if item.get("last_dispatch_status") == "completed" else 0,
+                "dispatch_active": False,
+            })
+        result.append(item)
+    return result
 
 
 def add_trailer(username, trailer_id, trailer_type, hub):

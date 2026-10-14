@@ -178,7 +178,8 @@
         border-radius: 4px;
         padding: 15px;
         margin-bottom: 12px;
-        cursor: grab;
+        cursor: default;
+        user-select: none;
         transition: transform 0.2s, background 0.2s, opacity 0.3s ease, transform 0.3s ease;
         animation: fadeIn 0.3s ease-out forwards;
     }
@@ -207,12 +208,34 @@
     #list-done .task-card i { color: #4ADE80 !important; }
     #list-overdue .task-card i { color: #FFA500 !important; }
 
+    .dispatch-manifest-card { cursor:default; background:rgba(16,21,26,.78); }
+    .dispatch-in-progress { border-left-color:#79b7d4 !important; }
+    .dispatch-suspended { border-left-color:#db7d83 !important; }
+    .dispatch-done { border-left-color:#70c493 !important; }
+    .dispatch-overdue { border-left-color:#d5bb6e !important; }
+    .dispatch-manifest-head,.dispatch-manifest-actions { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .dispatch-manifest-head strong { font: .76rem var(--font-title); letter-spacing:.5px; }
+    .dispatch-manifest-state { color:#91c7dc; font: .56rem var(--font-title); }
+    .dispatch-suspended .dispatch-manifest-state { color:#df8589; }
+    .dispatch-done .dispatch-manifest-state { color:#8bd0a4; }
+    .dispatch-overdue .dispatch-manifest-state { color:#dec476; }
+    .dispatch-manifest-route { margin-top:6px; color:#aeb8bf; font-size:.67rem; }
+    .dispatch-manifest-meta { margin-top:5px; color:#818d95; font:.6rem var(--font-title); }
+    .dispatch-manifest-progress { height:3px; margin-top:8px; background:rgba(255,255,255,.08); border-radius:3px; overflow:hidden; }
+    .dispatch-manifest-progress span { display:block; height:100%; background:#78b5d2; transition:width .35s ease; }
+    .dispatch-suspended .dispatch-manifest-progress span { background:#d9767d; }
+    .dispatch-done .dispatch-manifest-progress span { background:#70c493; }
+    .dispatch-overdue .dispatch-manifest-progress span { background:#d5bb6e; }
+    .dispatch-manifest-actions { justify-content:flex-start; margin-top:8px; }
+    .dispatch-manifest-actions a,.dispatch-manifest-actions button { border:1px solid rgba(255,255,255,.11); border-radius:5px; background:transparent; color:#aab5bc; padding:5px 7px; font:.54rem var(--font-title); text-decoration:none; cursor:pointer; }
+    .dispatch-manifest-actions button { color:#d78b8e; }
+
     .task-card:hover {
         background: rgba(255, 255, 255, 0.08);
     }
 
     .task-card:active {
-        cursor: grabbing;
+        cursor: default;
     }
 
     .sortable-ghost {
@@ -428,15 +451,9 @@
                 </div>
                 <span class="task-count" id="count-suspended">0</span>
             </div>
-            <div style="display: flex; gap: 10px; color: var(--text-muted); cursor: pointer;">
-                <i class="fa-solid fa-ellipsis"></i>
-                <i class="fa-solid fa-plus" onclick="addTask('suspended')"></i>
-            </div>
+            <i class="fa-solid fa-ellipsis" style="color:var(--text-muted);"></i>
         </div>
         <div class="task-list" id="list-suspended"></div>
-        <button class="new-page-btn" onclick="addTask('suspended')">
-            <i class="fa-solid fa-plus"></i> New task
-        </button>
     </div>
 
     <!-- Not Started -->
@@ -448,15 +465,9 @@
                 </div>
                 <span class="task-count" id="count-not-started">0</span>
             </div>
-            <div style="display: flex; gap: 10px; color: var(--text-muted); cursor: pointer;">
-                <i class="fa-solid fa-ellipsis"></i>
-                <i class="fa-solid fa-plus" onclick="addTask('not-started')"></i>
-            </div>
+            <i class="fa-solid fa-ellipsis" style="color:var(--text-muted);"></i>
         </div>
         <div class="task-list" id="list-not-started"></div>
-        <button class="new-page-btn" onclick="addTask('not-started')">
-            <i class="fa-solid fa-plus"></i> New task
-        </button>
     </div>
 
     <!-- In Progress -->
@@ -468,15 +479,9 @@
                 </div>
                 <span class="task-count" id="count-in-progress">0</span>
             </div>
-            <div style="display: flex; gap: 10px; color: var(--text-muted); cursor: pointer;">
-                <i class="fa-solid fa-ellipsis"></i>
-                <i class="fa-solid fa-plus" onclick="addTask('in-progress')"></i>
-            </div>
+            <i class="fa-solid fa-ellipsis" style="color:var(--text-muted);"></i>
         </div>
         <div class="task-list" id="list-in-progress"></div>
-        <button class="new-page-btn" onclick="addTask('in-progress')">
-            <i class="fa-solid fa-plus"></i> New task
-        </button>
     </div>
 
     <!-- Done -->
@@ -488,15 +493,9 @@
                 </div>
                 <span class="task-count" id="count-done">0</span>
             </div>
-            <div style="display: flex; gap: 10px; color: var(--text-muted); cursor: pointer;">
-                <i class="fa-solid fa-ellipsis"></i>
-                <i class="fa-solid fa-plus" onclick="addTask('done')"></i>
-            </div>
+            <i class="fa-solid fa-ellipsis" style="color:var(--text-muted);"></i>
         </div>
         <div class="task-list" id="list-done"></div>
-        <button class="new-page-btn" onclick="addTask('done')">
-            <i class="fa-solid fa-plus"></i> New task
-        </button>
     </div>
 
     <!-- Overdue -->
@@ -508,20 +507,11 @@
                 </div>
                 <span class="task-count" id="count-overdue">0</span>
             </div>
-            <div style="display: flex; gap: 10px; color: var(--text-muted); cursor: pointer;">
-                <i class="fa-solid fa-ellipsis"></i>
-                <i class="fa-solid fa-plus" onclick="addTask('overdue')"></i>
-            </div>
+            <i class="fa-solid fa-ellipsis" style="color:var(--text-muted);"></i>
         </div>
         <div class="task-list" id="list-overdue"></div>
-        <button class="new-page-btn" onclick="addTask('overdue')">
-            <i class="fa-solid fa-plus"></i> New task
-        </button>
     </div>
 </div>
-
-<!-- SortableJS via CDN -->
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
 <script>
     let tasks = [];
@@ -720,47 +710,8 @@
             const card = document.createElement('div');
             card.className = 'task-card';
             card.setAttribute('data-id', task.id);
-            
-            // Refactored interaction handling to fix dragging conflict
-            let isDragging = false;
-            let startX, startY;
-
-            card.addEventListener('mousedown', (e) => {
-                startX = e.pageX;
-                startY = e.pageY;
-                isDragging = false;
-            });
-
-            card.addEventListener('mousemove', (e) => {
-                if (Math.abs(e.pageX - startX) > 5 || Math.abs(e.pageY - startY) > 5) {
-                    isDragging = true;
-                }
-            });
-
-            card.addEventListener('click', (e) => {
-                if (!isDragging) {
-                    openPanel(task.id);
-                }
-            });
-
-            // Touch support for mobile/iPad
-            card.addEventListener('touchstart', (e) => {
-                startX = e.touches[0].pageX;
-                startY = e.touches[0].pageY;
-                isDragging = false;
-            }, { passive: true });
-
-            card.addEventListener('touchmove', (e) => {
-                if (Math.abs(e.touches[0].pageX - startX) > 5 || Math.abs(e.touches[0].pageY - startY) > 5) {
-                    isDragging = true;
-                }
-            }, { passive: true });
-
-            card.addEventListener('touchend', (e) => {
-                if (!isDragging) {
-                    openPanel(task.id);
-                }
-            }, { passive: true });
+            card.draggable = false;
+            card.addEventListener('click', () => openPanel(task.id));
             
             let dateDisplay = '';
             if (task.end) {
@@ -789,77 +740,9 @@
             if (lists[task.status]) lists[task.status].appendChild(card);
         });
 
-        // Initialize Sortable for each column including overdue
-        ['not-started', 'in-progress', 'done', 'suspended', 'overdue'].forEach(status => {
-            const el = lists[status];
-            if (!el) return;
-            
-            Sortable.create(el, {
-                group: 'kanban',
-                animation: 150,
-                ghostClass: 'sortable-ghost',
-                onEnd: (evt) => {
-                    const taskId = evt.item.getAttribute('data-id');
-                    const newStatus = evt.to.id.replace('list-', '');
-                    
-                    const taskIndex = tasks.findIndex(t => t.id === taskId);
-                    if (taskIndex > -1) {
-                        tasks[taskIndex].status = newStatus;
-                        saveTasks();
-                    }
-                }
-            });
-        });
-
         updateCounts();
+        window.dispatchEvent(new Event('manifest:render'));
     }
-
-    function addTask(status) {
-        const id = Date.now().toString();
-        const newTask = {
-            id: id,
-            title: "Untitled Task",
-            desc: "",
-            start: "",
-            end: "",
-            status: status,
-            assignees: []
-        };
-        tasks.push(newTask);
-        saveTasks();
-        renderTasks();
-        openPanel(id);
-    }
-
-    // Initialize Sortable for each list
-    const listIds = ['list-not-started', 'list-in-progress', 'list-done', 'list-suspended', 'list-overdue'];
-    listIds.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            new Sortable(el, {
-                group: 'tasks',
-                animation: 150,
-                ghostClass: 'sortable-ghost',
-                filter: '.no-drag', // Optional: if we want to filter specific elements
-                preventOnFilter: false,
-                onEnd: (evt) => {
-                    const taskId = evt.item.getAttribute('data-id');
-                    const newStatus = evt.to.id.replace('list-', '');
-                    
-                    const taskIndex = tasks.findIndex(t => t.id === taskId);
-                    if (taskIndex > -1) {
-                        const oldStatus = tasks[taskIndex].status;
-                        tasks[taskIndex].status = newStatus;
-                        saveTasks();
-                        
-                        if (window.nexusLog && oldStatus !== newStatus) {
-                            window.nexusLog(`SYSTEM: Task repositioned. Status updated to ${newStatus.replace('-', ' ').toUpperCase()}.`, 'info');
-                        }
-                    }
-                }
-            });
-        }
-    });
 
     function updateClock() {
         const now = new Date();
@@ -903,4 +786,5 @@
 
     renderTasks();
 </script>
+<script src="{{ url_for('static', filename='manifest-live.js') }}"></script>
 {% endblock %}

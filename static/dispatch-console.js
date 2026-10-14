@@ -13,9 +13,13 @@
     const markers = new Map();
     const routeLayer = map ? L.layerGroup().addTo(map) : null;
     let selectedId = null;
+    let followingId = null;
     let activeFilter = 'ongoing';
     let catalog = { warehouses: [], destinations: [] };
     let snapshot = { active: [], completed: [], cancelled: [] };
+    const progressAnchors = new Map();
+    let travelledLine = null;
+    let futureLine = null;
 
     if (map) {
         const cartoKey = window.CARTO_BASEMAPS_KEY || '';
@@ -29,6 +33,13 @@
             const caption = document.getElementById('map-caption');
             if (caption) caption.textContent = 'CARTO KEY REQUIRED · ADD CARTO_BASEMAPS_API_KEY IN REPLIT SECRETS';
         }
+        map.on('click', () => {
+            if (followingId) {
+                markers.get(followingId)?.dot.closePopup();
+                followingId = null;
+            }
+            map.closePopup();
+        });
     } else if (mapNode) {
         mapNode.innerHTML = '<div class="empty-state">Map tiles are unavailable. Check the network connection.</div>';
     }
@@ -90,6 +101,7 @@
                 <div class="dispatch-row"><span class="dispatch-truck">${esc(d.truck_id)}</span><span class="dispatch-state">${statusLabel(d.status)}</span></div>
                 <div class="dispatch-destination">${esc(d.origin_name || '')} → ${esc(d.destination_name || '')}</div>
                 <div class="dispatch-details"><span>${esc(d.speed_mph ?? 0)} MPH · ${Math.round((d.progress || 0) * 100)}%</span><span>${d.status === 'cancelled' ? 'CANCELLED' : d.status === 'assistance_requested' ? 'HELP REQUESTED' : `ETA ${Math.max(0, Math.ceil((d.eta_minutes || 0) * (1 - (d.progress || 0))))} MIN`}</span></div>
+                ${d.trailer_id ? `<div class="dispatch-trailer">TRAILER ${esc(d.trailer_id)}</div>` : ''}
                 ${actionButtons.length ? `<div class="dispatch-actions">${actionButtons.join('')}</div>` : ''}
             </article>`;
         }).join('') : '<div class="empty-state">No dispatches in this view.</div>';
@@ -99,8 +111,12 @@
 
     function drawRoute(dispatch) {
         if (!map || !routeLayer) return;
-        routeLayer.clearLayers();
-        if (!dispatch || !Array.isArray(dispatch.route) || dispatch.route.length < 2) return;
+        if (!dispatch || !Array.isArray(dispatch.route) || dispatch.route.length < 2) {
+            if (travelledLine) routeLayer.removeLayer(travelledLine);
+            if (futureLine) routeLayer.removeLayer(futureLine);
+            travelledLine = futureLine = null;
+            return;
+        }
         const route = dispatch.route.map(point => L.latLng(point[0], point[1]));
         const segmentLengths = [];
         let total = 0;
@@ -128,8 +144,14 @@
                 break;
             }
         }
-        if (future.length > 1) L.polyline(future, { color: '#9ba5ad', weight: 2, opacity: .45, dashArray: '3 7' }).addTo(routeLayer);
-        if (travelled.length > 1) L.polyline(travelled, { color: '#79a9ce', weight: 3, opacity: .86 }).addTo(routeLayer);
+        if (future.length > 1) {
+            if (!futureLine) futureLine = L.polyline(future, { color: '#9ba5ad', weight: 2, opacity: .45, dashArray: '3 7' }).addTo(routeLayer);
+            else futureLine.setLatLngs(future);
+        }
+        if (travelled.length > 1) {
+            if (!travelledLine) travelledLine = L.polyline(travelled, { color: '#79a9ce', weight: 3, opacity: .86 }).addTo(routeLayer);
+            else travelledLine.setLatLngs(travelled);
+        }
     }
 
     function positionOnRoute(points, progress) {
@@ -156,6 +178,42 @@
         return route[route.length - 1];
     }
 
+    function liveDispatch(dispatch, now) {
+        const anchor = progressAnchors.get(dispatch.id);
+        if (!anchor) return dispatch;
+        const paused = ['needs_assistance', 'assistance_requested'].includes(anchor.status);
+        const elapsed = Math.max(0, (now - anchor.at) / 1000);
+        const distance = Math.max(Number(anchor.distance) || 0, 0.1);
+        const progress = paused
+            ? anchor.progress
+            : Math.min(1, anchor.progress + elapsed * (Number(anchor.speed) || 0) / (3600 * distance));
+        return { ...dispatch, progress };
+    }
+
+    function popupContent(dispatch) {
+        const eta = Math.max(0, Math.ceil((dispatch.eta_minutes || 0) * (1 - (dispatch.progress || 0))));
+        return `<div class="truck-popup">
+            <strong>${esc(dispatch.truck_id)}</strong>
+            <span>${esc(dispatch.destination_name || 'Route')}</span>
+            ${dispatch.trailer_id ? `<span>TRAILER ${esc(dispatch.trailer_id)}</span>` : ''}
+            <span>${esc(dispatch.speed_mph ?? 0)} MPH · ${statusLabel(dispatch.status)}</span>
+            <span>${Math.round((dispatch.progress || 0) * 100)}% · ETA ${eta} MIN</span>
+        </div>`;
+    }
+
+    function followDispatch(dispatch) {
+        if (!dispatch || !map) return;
+        selectedId = dispatch.id;
+        followingId = dispatch.id;
+        const pair = markers.get(dispatch.id);
+        if (pair) {
+            pair.dot.setPopupContent(popupContent(dispatch)).openPopup();
+            map.panTo(pair.dot.getLatLng(), { animate: false });
+        }
+        renderList();
+        drawRoute(dispatch);
+    }
+
     function renderMap() {
         if (!map) return;
         const liveIds = new Set(snapshot.active.map(d => d.id));
@@ -167,37 +225,44 @@
             }
         }
         snapshot.active.forEach(dispatch => {
-            const point = positionOnRoute(dispatch.route || [], dispatch.progress);
+            const current = liveDispatch(dispatch, performance.now());
+            const point = positionOnRoute(current.route || [], current.progress);
             if (!point) return;
-            const color = statusColor(dispatch.status);
-            const tooltip = `<b>${esc(dispatch.truck_id)}</b><br>${esc(dispatch.destination_name)}<br>${esc(dispatch.speed_mph)} mph · ${statusLabel(dispatch.status)}`;
+            const color = statusColor(current.status);
             let pair = markers.get(dispatch.id);
             if (!pair) {
                 const halo = L.circleMarker(point, { radius: 16, color, fillColor: color, fillOpacity: .13, weight: 1, opacity: .35 }).addTo(map);
-                const dot = L.circleMarker(point, { radius: 10, color: '#e7edf1', fillColor: color, fillOpacity: 1, weight: 2.5 }).addTo(map);
-                dot.bindTooltip(tooltip, { sticky: true });
-                dot.on('click', () => {
-                    selectedId = dispatch.id;
-                    renderList();
-                    drawRoute(snapshot.active.find(item => item.id === dispatch.id));
+                const dot = L.circleMarker(point, { radius: 10, color: '#e7edf1', fillColor: color, fillOpacity: 1, weight: 2.5, bubblingMouseEvents: false }).addTo(map);
+                dot.bindPopup(popupContent(current), { closeButton: false, autoClose: false, closeOnClick: false, className: 'truck-map-popup' });
+                dot.on('click', event => {
+                    if (event.originalEvent) L.DomEvent.stopPropagation(event.originalEvent);
+                    followDispatch(liveDispatch(snapshot.active.find(item => item.id === dispatch.id), performance.now()));
                 });
                 pair = { halo, dot };
                 markers.set(dispatch.id, pair);
             } else {
                 pair.halo.setLatLng(point).setStyle({ color, fillColor: color });
-                pair.dot.setLatLng(point).setStyle({ color: '#e7edf1', fillColor: color }).setTooltipContent(tooltip);
+                pair.dot.setLatLng(point).setStyle({ color: '#e7edf1', fillColor: color }).setPopupContent(popupContent(current));
             }
         });
         if (!snapshot.active.some(d => d.id === selectedId)) selectedId = snapshot.active[0]?.id || null;
-        drawRoute(snapshot.active.find(d => d.id === selectedId));
+        if (!snapshot.active.some(d => d.id === followingId)) followingId = null;
     }
 
     function updateState(state) {
+        const receivedAt = performance.now();
         snapshot = {
             active: state.active || [],
             completed: state.completed || [],
             cancelled: state.cancelled || []
         };
+        snapshot.active.forEach(dispatch => progressAnchors.set(dispatch.id, {
+            progress: Number(dispatch.progress) || 0,
+            at: receivedAt,
+            speed: Number(dispatch.speed_mph) || 0,
+            distance: Number(dispatch.distance_miles) || 0.1,
+            status: dispatch.status
+        }));
         const counts = {
             finished: snapshot.completed.length,
             ongoing: snapshot.active.filter(d => d.status === 'en_route').length,
@@ -216,6 +281,7 @@
             : 'SEATTLE OPERATIONS · NO ACTIVE DISPATCHES';
         renderList();
         renderMap();
+        drawRoute(liveDispatch(snapshot.active.find(d => d.id === selectedId), receivedAt));
 
         const seen = new Set(JSON.parse(sessionStorage.getItem('dispatch_notices') || '[]'));
         (state.notices || []).forEach(item => {
@@ -296,14 +362,41 @@
         }
         const card = event.target.closest('[data-select]');
         if (card) {
-            selectedId = card.dataset.select;
-            const selected = snapshot.active.find(item => item.id === selectedId);
-            renderList();
-            drawRoute(selected);
+            const selected = snapshot.active.find(item => item.id === card.dataset.select);
+            if (selected) followDispatch(liveDispatch(selected, performance.now()));
         }
     });
 
     if (map) setTimeout(() => map.invalidateSize(), 180);
+    function animateFrame(now) {
+        if (map) {
+            snapshot.active.forEach(dispatch => {
+                const current = liveDispatch(dispatch, now);
+                const point = positionOnRoute(current.route || [], current.progress);
+                const pair = markers.get(dispatch.id);
+                if (!point || !pair) return;
+                pair.halo.setLatLng(point);
+                pair.dot.setLatLng(point);
+                if (pair.dot.isPopupOpen()) pair.dot.getPopup().setLatLng(point);
+            });
+            if (followingId) {
+                const dispatch = snapshot.active.find(item => item.id === followingId);
+                if (dispatch) {
+                    const current = liveDispatch(dispatch, now);
+                    const point = positionOnRoute(current.route || [], current.progress);
+                    if (point) {
+                        const screenPoint = map.latLngToContainerPoint(point);
+                        const screenCenter = map.latLngToContainerPoint(map.getCenter());
+                        if (screenPoint.distanceTo(screenCenter) > 0.75) {
+                            map.panTo(point, { animate: false, noMoveStart: true });
+                        }
+                    }
+                }
+            }
+        }
+        requestAnimationFrame(animateFrame);
+    }
+    requestAnimationFrame(animateFrame);
     refresh();
     setInterval(refresh, 1000);
 })();

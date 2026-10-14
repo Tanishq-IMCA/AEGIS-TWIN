@@ -9,18 +9,38 @@
     .trailer-count { background:#0e1317; border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:12px; }
     .trailer-count span { color:#7c8790; font: .56rem var(--font-title); letter-spacing:.7px; }
     .trailer-count strong { display:block; margin-top:5px; color:#e1e6ea; font:500 1.2rem var(--font-title); }
+    .trailer-models { display:grid; grid-template-columns:repeat(auto-fit,minmax(235px,1fr)); gap:9px; margin-bottom:12px; }
+    .trailer-model { overflow:hidden; background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.018)); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:12px; }
+    .trailer-model.attention { border-color:rgba(223,110,115,.38); }
+    .trailer-model.delayed { border-color:rgba(215,183,91,.38); }
+    .trailer-model.good { border-color:rgba(92,188,140,.24); }
+    .trailer-vehicle { width:100%; height:78px; margin:4px 0 9px; }
+    .trailer-model-head,.trailer-model-meta { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .trailer-model-head strong { font: .7rem var(--font-title); letter-spacing:.6px; }
+    .trailer-model-meta { color:#87929a; font-size:.6rem; margin-top:5px; }
+    .fleet-badge { border:1px solid currentColor; border-radius:999px; padding:4px 7px; font: .52rem var(--font-title); letter-spacing:.55px; white-space:nowrap; }
+    .fleet-badge.good { color:#82d3a6; }
+    .fleet-badge.delayed { color:#dec476; }
+    .fleet-badge.attention { color:#df8589; }
+    .fleet-badge.neutral { color:#a1abb2; }
+    .trailer-progress { height:3px; margin-top:9px; background:rgba(255,255,255,.08); border-radius:3px; overflow:hidden; }
+    .trailer-progress span { display:block; height:100%; background:#7fcda0; transition:width .35s ease; }
+    .trailer-model.delayed .trailer-progress span { background:#d7b75b; }
+    .trailer-model.attention .trailer-progress span { background:#d9767d; }
+    .trailer-section-title { margin:16px 0 8px; color:#b6c0c7; font: .65rem var(--font-title); letter-spacing:1px; }
     .trailer-form,.trailer-list { background:#0b0f13; border:1px solid rgba(255,255,255,.08); border-radius:10px; }
     .trailer-form { display:grid; grid-template-columns:1fr 1fr 1.3fr auto; gap:7px; padding:10px; margin-bottom:10px; }
     .trailer-form input,.trailer-form select,.trailer-form button { min-width:0; height:32px; border:1px solid rgba(255,255,255,.1); border-radius:6px; background:#11171c; color:#dce2e7; padding:0 8px; font-size:.63rem; }
     .trailer-form select option { color:#111; }
     .trailer-form button { background:#e6eaed; color:#101419; cursor:pointer; padding:0 13px; }
     .trailer-list { overflow:hidden; }
-    .trailer-row { display:grid; grid-template-columns:1fr 1.3fr 1.3fr 1fr auto; align-items:center; gap:9px; padding:11px 13px; border-bottom:1px solid rgba(255,255,255,.055); font-size:.66rem; }
+    .trailer-row { display:grid; grid-template-columns:1fr 1.15fr 1.25fr 1.15fr 1fr auto; align-items:center; gap:9px; padding:11px 13px; border-bottom:1px solid rgba(255,255,255,.055); font-size:.66rem; }
     .trailer-row:last-child { border-bottom:0; }
     .trailer-id { color:#e5eaed; font: .62rem var(--font-title); letter-spacing:.6px; }
     .trailer-status { color:#9bcdb0; font: .55rem var(--font-title); letter-spacing:.5px; }
     .trailer-status.assigned { color:#9ca9b4; }
     .trailer-status.maintenance { color:#d2bd76; }
+    .trailer-row .fleet-badge { justify-self:start; }
     .trailer-row select,.trailer-delete { background:transparent; border:1px solid rgba(255,255,255,.12); border-radius:5px; color:#bac3ca; font-size:.58rem; padding:5px 6px; }
     .trailer-row select option { color:#111; }
     .trailer-delete { cursor:pointer; }
@@ -37,10 +57,12 @@
     {% include "_page_header.html" %}
     <header class="trailers-header"><p>SEATTLE HUBS · ASSIGNMENT READINESS</p></header>
     <section class="trailer-counts">
-        <div class="trailer-count"><span>AVAILABLE</span><strong id="count-available">0</strong></div>
-        <div class="trailer-count"><span>ASSIGNED</span><strong id="count-assigned">0</strong></div>
-        <div class="trailer-count"><span>MAINTENANCE</span><strong id="count-maintenance">0</strong></div>
+        <div class="trailer-count"><span>IN TRANSIT</span><strong id="count-transit">0</strong></div>
+        <div class="trailer-count"><span>DELAYED</span><strong id="count-delayed">0</strong></div>
+        <div class="trailer-count"><span>NEEDS ATTENTION</span><strong id="count-attention">0</strong></div>
     </section>
+    <section id="trailer-models" class="trailer-models" aria-label="Trailer fleet models"></section>
+    <h2 class="trailer-section-title">FLEET INVENTORY</h2>
     <form class="trailer-form" id="trailer-form">
         <input id="trailer-id" placeholder="Trailer ID" maxlength="24" required>
         <input id="trailer-type" placeholder="Type" maxlength="32" required>
@@ -55,15 +77,50 @@
     let trailers = [];
     const esc = text => String(text ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     function notice(title, message, error=false) { window.showNotice?.(esc(title), esc(message), 3200, false, error); }
+    function stateInfo(t) {
+        const status = t.dispatch_status;
+        if (status === 'needs_assistance' || status === 'assistance_requested' || t.status === 'maintenance') return {tone:'attention', label:'NEEDS ATTENTION'};
+        if (status === 'slowed' || (t.dispatch_active && t.started_at && Date.now()/1000 > t.started_at + (t.expected_duration_minutes || 0)*60)) return {tone:'delayed', label:'DELAYED'};
+        if (status === 'completed') return {tone:'good', label:'FINISHED'};
+        if (status === 'cancelled') return {tone:'neutral', label:'CANCELLED'};
+        if (t.dispatch_active) return {tone:'good', label:'IN TRANSIT'};
+        if (t.status === 'assigned') return {tone:'neutral', label:'ASSIGNED'};
+        return {tone:'good', label:'AVAILABLE'};
+    }
+    function vehicleSvg(tone) {
+        const color = tone === 'attention' ? '#df8589' : tone === 'delayed' ? '#dec476' : '#82d3a6';
+        return `<svg class="trailer-vehicle" viewBox="0 0 280 80" role="img" aria-label="2D truck and trailer">
+            <path d="M18 20h170v38H18z" fill="#182127" stroke="${color}" stroke-width="1.5"/>
+            <path d="M188 32h36l24 19v7h-60z" fill="#26323a" stroke="${color}" stroke-width="1.5"/>
+            <path d="M203 36h18l15 12h-33z" fill="#10171c" stroke="#71808a"/>
+            <path d="M28 28h150M28 36h150M28 44h150" stroke="#50606a" stroke-width=".7" opacity=".45"/>
+            <circle cx="52" cy="61" r="8" fill="#090d10" stroke="#7e8a91" stroke-width="2"/>
+            <circle cx="155" cy="61" r="8" fill="#090d10" stroke="#7e8a91" stroke-width="2"/>
+            <circle cx="213" cy="61" r="8" fill="#090d10" stroke="#7e8a91" stroke-width="2"/>
+            <path d="M52 61h103" stroke="${color}" stroke-width="1" opacity=".8"/>
+            <rect x="262" y="48" width="7" height="8" rx="2" fill="${color}" opacity=".8"/>
+        </svg>`;
+    }
     function render() {
-        ['available','assigned','maintenance'].forEach(status => {
-            document.getElementById(`count-${status}`).textContent = trailers.filter(t => t.status === status).length;
-        });
-        document.getElementById('trailer-list').innerHTML = trailers.length ? trailers.map(t => {
+        const classified = trailers.map(t => ({...t, state:stateInfo(t)}));
+        document.getElementById('count-transit').textContent = classified.filter(t => t.dispatch_active).length;
+        document.getElementById('count-delayed').textContent = classified.filter(t => t.state.tone === 'delayed').length;
+        document.getElementById('count-attention').textContent = classified.filter(t => t.state.tone === 'attention').length;
+        document.getElementById('trailer-models').innerHTML = classified.length ? classified.map(t => {
+            const progress = Math.max(0, Math.min(100, Math.round((t.progress || 0) * 100)));
+            return `<article class="trailer-model ${t.state.tone}">
+                ${vehicleSvg(t.state.tone)}
+                <div class="trailer-model-head"><strong>${esc(t.id)} · ${esc(t.type)}</strong><span class="fleet-badge ${t.state.tone}">${t.state.label}</span></div>
+                <div class="trailer-model-meta"><span>${esc(t.truck_id ? `TRUCK ${t.truck_id}` : t.hub)}</span><span>${esc(t.destination_name || (warehouses.find(w => w.id === t.hub)?.name || t.hub))}</span></div>
+                ${t.dispatch_active ? `<div class="trailer-progress"><span style="width:${progress}%"></span></div>` : ''}
+            </article>`;
+        }).join('') : '<div class="trailers-empty">No trailers recorded.</div>';
+        document.getElementById('trailer-list').innerHTML = classified.length ? classified.map(t => {
             const hub = warehouses.find(item => item.id === t.hub)?.name || t.hub;
             return `<div class="trailer-row">
                 <span class="trailer-id">${esc(t.id)}</span><span>${esc(t.type)}</span><span>${esc(hub)}</span>
-                <select data-status="${esc(t.id)}" aria-label="Status for ${esc(t.id)}">
+                <span class="fleet-badge ${t.state.tone}">${t.state.label}</span>
+                <select data-status="${esc(t.id)}" aria-label="Status for ${esc(t.id)}" ${t.dispatch_active ? 'disabled title="Status follows the active dispatch"' : ''}>
                     ${['available','assigned','maintenance'].map(s => `<option value="${s}" ${t.status === s ? 'selected' : ''}>${s.toUpperCase()}</option>`).join('')}
                 </select>
                 <button class="trailer-delete" data-delete="${esc(t.id)}" title="Remove trailer">REMOVE</button>
@@ -113,6 +170,7 @@
         notice('TRAILER REMOVED', 'Trailer removed from availability.');
     });
     load().catch(error => { document.getElementById('trailer-list').innerHTML = `<div class="trailers-empty">${esc(error.message)}</div>`; });
+    setInterval(() => load().catch(() => {}), 3000);
 })();
 </script>
 {% endblock %}
