@@ -44,8 +44,13 @@ _STATE_KEY = "dispatch_engine"
 _LOG_KEY = "engine_logs"
 _AUTONOMY_KEY = "dispatch_autonomy"
 _NOTICE_KEY = "dispatch_notifications"
+_FINANCE_KEY = "delivery_finance_ledger"
 _AUTONOMY_LOCK = RLock()
 _EARTH_MILES = 3958.8
+REVENUE_PER_MILE = 5.25
+FUEL_PRICE_PER_GALLON = 4.25
+FLEET_COST_PER_MILE = 1.15
+FLEET_MILES_PER_GALLON = 6.5
 
 
 def _state_locked(function):
@@ -208,6 +213,47 @@ def _append_logs(username, entries):
     storage_manager.save_data(username, _LOG_KEY, logs[-5000:])
 
 
+def _finance_record(dispatch, status, recorded_at=None):
+    total_miles = max(0, float(dispatch.get("distance_miles", 0) or 0))
+    miles = total_miles if status == "completed" else total_miles * max(
+        0, min(1, float(dispatch.get("progress", 0) or 0))
+    )
+    revenue = miles * REVENUE_PER_MILE if status != "cancelled" else 0
+    gallons = miles / FLEET_MILES_PER_GALLON
+    fuel_cost = gallons * FUEL_PRICE_PER_GALLON
+    operating_cost = miles * FLEET_COST_PER_MILE
+    duration = float(dispatch.get("duration_minutes", 0) or 0)
+    expected = float(dispatch.get("expected_duration_minutes", dispatch.get("eta_minutes", 0)) or 0)
+    return {
+        "id": dispatch.get("id"),
+        "truck_id": dispatch.get("truck_id", ""),
+        "origin": dispatch.get("origin_name", ""),
+        "destination": dispatch.get("destination_name", ""),
+        "status": status,
+        "recorded_at": recorded_at or dispatch.get("arrived_at") or time.time(),
+        "distance_miles": round(miles, 2),
+        "route_distance_miles": round(total_miles, 2),
+        "progress": max(0, min(1, float(dispatch.get("progress", 1 if status == "completed" else 0) or 0))),
+        "fuel_gallons": round(gallons, 2),
+        "revenue": round(revenue, 2),
+        "fuel_cost": round(fuel_cost, 2),
+        "operating_cost": round(operating_cost, 2),
+        "profit": round(revenue - fuel_cost - operating_cost, 2),
+        "time_saved_minutes": round(max(0, expected - duration), 1) if status == "completed" else 0,
+    }
+
+
+def _save_finance_record(username, record):
+    ledger = storage_manager.get_data(username, _FINANCE_KEY)
+    if not isinstance(ledger, list):
+        ledger = []
+    if record.get("id") and not any(
+        item.get("id") == record["id"] for item in ledger if isinstance(item, dict)
+    ):
+        ledger.append(record)
+        storage_manager.save_data(username, _FINANCE_KEY, ledger)
+
+
 def _load_state(username):
     state = storage_manager.get_data(username, _STATE_KEY)
     if not isinstance(state, dict) or not isinstance(state.get("active"), list):
@@ -275,10 +321,14 @@ def _advance(username, state):
                 "destination_name": dispatch["destination_name"],
                 "duration_minutes": round(duration, 1),
                 "eta_minutes": dispatch["expected_duration_minutes"],
+                "distance_miles": dispatch.get("distance_miles", 0),
                 "timing": timing,
                 "arrived_at": now,
                 "status": "completed",
             })
+            financials = _finance_record(dispatch | {"duration_minutes": duration}, "completed", now)
+            completed_now[-1]["financials"] = financials
+            _save_finance_record(username, financials)
             _sync_trailer(username, dispatch, "completed", finished=True)
             delivery = completed_now[-1]
             message = f"{dispatch['truck_id']} completed delivery to {dispatch['destination_name']}."
@@ -463,6 +513,66 @@ def get_state(username):
         notices.extend(auto_notices)
     _record_notices(username, notices)
     return state, notices
+
+
+@_state_locked
+def get_analytics(username):
+    state, _ = get_state(username)
+    ledger = storage_manager.get_data(username, _FINANCE_KEY)
+    records = [item for item in ledger if isinstance(item, dict)] if isinstance(ledger, list) else []
+    known_ids = {item.get("id") for item in records}
+    for dispatch in state["active"]:
+        current = _finance_record(dispatch, "in_transit")
+        if current["id"] not in known_ids:
+            records.append(current)
+    for dispatch in state["cancelled"]:
+        current = _finance_record(dispatch, "cancelled", dispatch.get("cancelled_at"))
+        if current["id"] not in known_ids:
+            records.append(current)
+
+    totals = {
+        key: round(sum(float(item.get(key, 0) or 0) for item in records), 2)
+        for key in (
+            "revenue", "fuel_cost", "operating_cost", "profit",
+            "distance_miles", "fuel_gallons", "time_saved_minutes",
+        )
+    }
+    totals["completed_deliveries"] = sum(item.get("status") == "completed" for item in records)
+    totals["active_deliveries"] = len(state["active"])
+    totals["total_cost"] = round(totals["fuel_cost"] + totals["operating_cost"], 2)
+
+    daily = {}
+    for item in records:
+        try:
+            day = datetime.fromtimestamp(
+                float(item.get("recorded_at", 0)), timezone.utc
+            ).date().isoformat()
+        except (TypeError, ValueError, OSError):
+            continue
+        bucket = daily.setdefault(day, {
+            "date": day, "revenue": 0, "profit": 0, "fuel_cost": 0,
+            "operating_cost": 0, "distance_miles": 0, "deliveries": 0,
+        })
+        for key in ("revenue", "profit", "fuel_cost", "operating_cost", "distance_miles"):
+            bucket[key] += float(item.get(key, 0) or 0)
+        if item.get("status") == "completed":
+            bucket["deliveries"] += 1
+
+    return {
+        "records": records,
+        "daily": [
+            {key: round(value, 2) if isinstance(value, float) else value
+             for key, value in bucket.items()}
+            for _, bucket in sorted(daily.items())[-30:]
+        ],
+        "totals": totals,
+        "assumptions": {
+            "revenue_per_mile": REVENUE_PER_MILE,
+            "fuel_price_per_gallon": FUEL_PRICE_PER_GALLON,
+            "fleet_cost_per_mile": FLEET_COST_PER_MILE,
+            "miles_per_gallon": FLEET_MILES_PER_GALLON,
+        },
+    }
 
 
 def create_dispatch(username, origin_id=None, destination_id=None):

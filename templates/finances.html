@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div style="height: 100%; display: flex; flex-direction: column; gap: 30px;">
+<div class="analytics-page">
     <div style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: baseline; padding-right: 0px;">
         <div class="title-underline-wrapper">
-            <h1 class="dashboard-title">FINANCIAL OVERVIEW</h1>
+            <h1 class="dashboard-title">FLEET ANALYTICS</h1>
             <div class="themed-wave-line"></div>
         </div>
     </div>
@@ -31,7 +31,7 @@
         }
 
         .dashboard-title::after {
-            content: "FINANCIAL OVERVIEW";
+            content: "FLEET ANALYTICS";
             position: absolute;
             top: 0;
             left: 0;
@@ -79,25 +79,114 @@
             100% { transform: translateX(200%); }
         }
 
-        .finance-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 25px;
-            flex: 1;
-        }
+        .analytics-page { min-height:100%; padding-bottom:30px; color:#eef3f5; }
+        .analytics-heading { display:flex; justify-content:space-between; align-items:flex-end; gap:20px; margin-bottom:22px; }
+        .analytics-heading p { margin:10px 0 0; color:#9ba8ae; font-size:.94rem; letter-spacing:.25px; }
+        .analytics-actions { display:flex; flex-wrap:wrap; gap:10px; }
+        .analytics-action { display:inline-flex; align-items:center; gap:8px; padding:11px 15px; border:1px solid rgba(255,255,255,.16); border-radius:10px; color:#edf3f4; text-decoration:none; background:rgba(255,255,255,.055); cursor:pointer; transition:transform .2s ease, border-color .2s ease, background .2s ease; font-size:.88rem; }
+        .analytics-action:hover { transform:translateY(-2px); border-color:var(--accent-orange); background:rgba(255,255,255,.1); }
+        .analytics-action.primary { color:#101613; background:var(--accent-orange); border-color:transparent; }
+        .analytics-metrics { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:13px; margin-bottom:16px; }
+        .metric-card { min-height:125px; padding:18px; border-radius:18px; overflow:hidden; }
+        .metric-label { color:#9da9ae; text-transform:uppercase; letter-spacing:1.15px; font-size:.74rem; }
+        .metric-value { display:block; margin-top:14px; color:#f4f7f8; font-size:1.75rem; line-height:1.1; font-variant-numeric:tabular-nums; }
+        .metric-hint { display:block; margin-top:9px; color:#87949b; font-size:.8rem; }
+        .analytics-main-grid { display:grid; grid-template-columns:minmax(0,1.65fr) minmax(300px,.85fr); gap:16px; margin-bottom:16px; }
+        .analytics-secondary-grid { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(310px,1fr); gap:16px; margin-bottom:16px; }
+        .analytics-panel { padding:21px; border-radius:20px; min-width:0; }
+        .chart-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:8px; }
+        .chart-heading h2 { margin:0; font-size:1.1rem; letter-spacing:.7px; color:#f3f6f7; }
+        .chart-heading p { margin:6px 0 0; color:#8f9ca3; font-size:.83rem; }
+        .chart-legend { display:flex; flex-wrap:wrap; gap:9px 15px; margin-top:12px; color:#bac3c7; font-size:.76rem; }
+        .legend-item { display:inline-flex; align-items:center; gap:7px; }
+        .legend-dot { display:inline-block; width:8px; height:8px; border-radius:50%; }
+        .analytics-chart { display:block; width:100%; height:260px; overflow:visible; }
+        .analytics-chart text { fill:#8c999f; font:11px 'Bourgeois',sans-serif; }
+        .chart-gridline { stroke:rgba(255,255,255,.09); stroke-width:1; }
+        .chart-series { fill:none; stroke-width:2.6; stroke-linejoin:miter; stroke-linecap:square; stroke-dasharray:900; stroke-dashoffset:900; animation:chart-draw 1.1s cubic-bezier(.25,.8,.25,1) forwards; }
+        .chart-series.dotted { stroke-dasharray:4 7; }
+        .chart-bar { transform-box:fill-box; transform-origin:bottom; animation:bar-rise .7s cubic-bezier(.2,.8,.2,1) both; }
+        .cost-pie { width:185px; height:185px; margin:20px auto 13px; border-radius:50%; position:relative; background:conic-gradient(#63d6b0 0deg,#63d6b0 1deg,#7c91ff 1deg,#7c91ff 2deg,#f1ad60 2deg,#f1ad60 3deg); transform:scale(.72) rotate(-35deg); opacity:.35; animation:pie-in .9s cubic-bezier(.16,1,.3,1) .12s forwards; box-shadow:0 0 35px rgba(99,214,176,.08); }
+        .cost-pie::after { content:""; position:absolute; inset:27%; border-radius:50%; background:rgba(13,18,21,.96); border:1px solid rgba(255,255,255,.1); }
+        .pie-center { position:absolute; z-index:1; inset:0; display:grid; place-content:center; text-align:center; pointer-events:none; }
+        .pie-center strong { font-size:1.1rem; font-weight:500; }
+        .pie-center span { color:#8f9ca3; font-size:.72rem; margin-top:4px; }
+        .pie-legend { display:grid; gap:9px; }
+        .pie-row { display:flex; justify-content:space-between; align-items:center; gap:10px; color:#b7c1c6; font-size:.84rem; }
+        .pie-row-label { display:flex; align-items:center; gap:8px; }
+        .records-panel { padding:0; margin-bottom:16px; border-radius:18px; overflow:hidden; }
+        .records-panel summary { display:flex; justify-content:space-between; align-items:center; gap:15px; padding:18px 21px; cursor:pointer; list-style:none; color:#e7edef; letter-spacing:.5px; }
+        .records-panel summary::-webkit-details-marker { display:none; }
+        .records-panel summary span:last-child { color:#95a2a8; font-size:.78rem; }
+        .records-content { padding:0 20px 20px; }
+        .records-scroll { max-height:320px; overflow:auto; border:1px solid rgba(255,255,255,.09); border-radius:10px; }
+        .records-table { border-collapse:collapse; width:100%; min-width:760px; font-size:.78rem; }
+        .records-table th,.records-table td { padding:11px 12px; border-bottom:1px solid rgba(255,255,255,.07); text-align:left; white-space:nowrap; }
+        .records-table th { color:#9eabb1; font-weight:500; text-transform:uppercase; letter-spacing:.65px; position:sticky; top:0; background:#171c1f; }
+        .records-table td { color:#d8e0e3; }
+        .analytics-footnote { color:#849198; font-size:.78rem; line-height:1.6; margin:10px 2px 0; }
+        .analytics-error { display:none; color:#ff9b9b; font-size:.88rem; margin:10px 0; }
+        .metric-value.updated { animation:value-flash .55s ease; }
+        @keyframes chart-draw { to { stroke-dashoffset:0; } }
+        @keyframes bar-rise { from { transform:scaleY(.08); opacity:.3; } to { transform:scaleY(1); opacity:1; } }
+        @keyframes pie-in { to { transform:scale(1) rotate(0); opacity:1; } }
+        @keyframes value-flash { 50% { color:var(--accent-orange); text-shadow:0 0 18px var(--accent-glow); } }
+        @media (max-width:1200px) { .analytics-metrics { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+        @media (max-width:850px) { .analytics-main-grid,.analytics-secondary-grid { grid-template-columns:1fr; } .analytics-heading { align-items:flex-start; flex-direction:column; } }
+        @media (max-width:560px) { .analytics-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; } .metric-card { min-height:110px; padding:14px; } .metric-value { font-size:1.35rem; } .analytics-panel { padding:16px; } .analytics-chart { height:220px; } }
+        @media (prefers-reduced-motion:reduce) { .chart-series,.chart-bar,.cost-pie,.metric-value.updated { animation:none !important; stroke-dashoffset:0; transform:none; opacity:1; } }
     </style>
 
-    <div class="finance-grid">
-        <div class="glass-panel" style="display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px;">
-            <i class="fa-solid fa-vault" style="font-size: 4rem; color: var(--accent-orange); filter: drop-shadow(0 0 15px var(--accent-glow));"></i>
-            <h2 style="font-family: var(--font-title); letter-spacing: 4px; margin: 0;">ASSET VAULT</h2>
-            <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px;">ENCRYPTED FINANCIAL DATA ACCESS (NEXUS-F1)</p>
+    <header class="analytics-heading">
+        <div class="title-underline-wrapper">
+            <h1 class="dashboard-title">FLEET ANALYTICS</h1>
+            <div class="themed-wave-line"></div>
+            <p>Delivery performance, operating costs, and live fleet movement.</p>
         </div>
-        <div class="glass-panel" style="display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px;">
-            <i class="fa-solid fa-chart-line" style="font-size: 4rem; color: var(--accent-orange); filter: drop-shadow(0 0 15px var(--accent-glow));"></i>
-            <h2 style="font-family: var(--font-title); letter-spacing: 4px; margin: 0;">MARKET TRENDS</h2>
-            <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px;">TELEMETRY DATA UNAVAILABLE (NEXUS-F2)</p>
+        <div class="analytics-actions">
+            <a class="analytics-action" href="/analytics.csv" target="_blank" rel="noopener"><i class="fa-solid fa-table-list"></i> Browse delivery CSV</a>
+            <a class="analytics-action primary" href="/analytics.csv?download=1"><i class="fa-solid fa-download"></i> Download CSV</a>
         </div>
-    </div>
+    </header>
+    <div id="analytics-error" class="analytics-error" role="status"></div>
+    <section class="analytics-metrics" aria-label="Fleet financial summary">
+        <article class="glass-panel metric-card"><span class="metric-label">Earned revenue</span><strong class="metric-value" id="metric-revenue">$0</strong><span class="metric-hint">Completed + earned in transit</span></article>
+        <article class="glass-panel metric-card"><span class="metric-label">Net operating profit</span><strong class="metric-value" id="metric-profit">$0</strong><span class="metric-hint">After fuel and delivery costs</span></article>
+        <article class="glass-panel metric-card"><span class="metric-label">Fuel consumed</span><strong class="metric-value" id="metric-fuel">0 gal</strong><span class="metric-hint" id="metric-fuel-cost">$0 estimated fuel cost</span></article>
+        <article class="glass-panel metric-card"><span class="metric-label">Distance travelled</span><strong class="metric-value" id="metric-distance">0 mi</strong><span class="metric-hint" id="metric-deliveries">0 completed deliveries</span></article>
+        <article class="glass-panel metric-card"><span class="metric-label">Time saved</span><strong class="metric-value" id="metric-time">0 min</strong><span class="metric-hint">Against planned delivery time</span></article>
+        <article class="glass-panel metric-card"><span class="metric-label">Delivery operating costs</span><strong class="metric-value" id="metric-operating">$0</strong><span class="metric-hint">Estimated fleet costs carried</span></article>
+    </section>
+    <section class="analytics-main-grid">
+        <article class="glass-panel analytics-panel">
+            <div class="chart-heading"><div><h2>Financial performance</h2><p>Daily revenue and cost movement · sharp-line comparison</p></div><span class="metric-label">LAST 30 DAYS</span></div>
+            <svg class="analytics-chart" id="line-chart" viewBox="0 0 720 260" role="img" aria-label="Daily revenue, net profit, fuel and operating cost line chart"></svg>
+            <div class="chart-legend" id="line-legend"></div>
+        </article>
+        <article class="glass-panel analytics-panel">
+            <div class="chart-heading"><div><h2>Estimated cost composition</h2><p>Fuel and delivery operating expense mix</p></div></div>
+            <div class="cost-pie" id="cost-pie" role="img" aria-label="Fuel and delivery operating cost composition pie chart">
+                <div class="pie-center"><strong id="pie-total">$0</strong><span>TOTAL COST</span></div>
+            </div>
+            <div class="pie-legend" id="pie-legend"></div>
+        </article>
+    </section>
+    <section class="analytics-secondary-grid">
+        <article class="glass-panel analytics-panel">
+            <div class="chart-heading"><div><h2>Daily fleet activity</h2><p>Driven miles and completed deliveries</p></div><span class="metric-label">LAST 14 DAYS</span></div>
+            <svg class="analytics-chart" id="bar-chart" viewBox="0 0 600 250" role="img" aria-label="Daily miles and completed delivery bar chart"></svg>
+            <div class="chart-legend" id="bar-legend"></div>
+        </article>
+        <article class="glass-panel analytics-panel">
+            <div class="chart-heading"><div><h2>Live fleet snapshot</h2><p>Active trucks and trip progress</p></div></div>
+            <div id="live-deliveries" class="pie-legend"></div>
+        </article>
+    </section>
+    <details class="glass-panel records-panel">
+        <summary><span><i class="fa-solid fa-file-csv"></i> Browse delivery records</span><span>Includes revenue, costs, distance, fuel, and time saved</span></summary>
+        <div class="records-content"><div class="records-scroll"><table class="records-table"><thead><tr><th>Recorded</th><th>Status</th><th>Truck</th><th>Route</th><th>Miles</th><th>Fuel gal</th><th>Revenue</th><th>Fuel cost</th><th>Delivery cost</th><th>Net profit</th></tr></thead><tbody id="records-body"></tbody></table></div></div>
+    </details>
+    <p class="analytics-footnote" id="analytics-assumptions">Financials are operating estimates, not accounting records. Current model: revenue per mile, fuel economy, fuel price, and fleet cost per mile are shown in the chart data assumptions.</p>
+    <script src="{{ url_for('static', filename='analytics.js') }}" defer></script>
 </div>
 {% endblock %}

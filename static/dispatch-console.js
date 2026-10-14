@@ -55,6 +55,19 @@
         cancelled: 'CANCELLED'
     }[status] || status.toUpperCase());
 
+    function dispatchFinance(dispatch) {
+        if (dispatch.financials) return dispatch.financials;
+        const progress = dispatch.status === 'completed' ? 1 : Math.max(0, Math.min(1, Number(dispatch.progress) || 0));
+        const miles = (Number(dispatch.distance_miles) || 0) * progress;
+        const revenue = dispatch.status === 'cancelled' ? 0 : miles * 5.25;
+        const fuelCost = miles / 6.5 * 4.25;
+        const operatingCost = miles * 1.15;
+        return { distance_miles: miles, revenue, fuel_cost: fuelCost, operating_cost: operatingCost, profit: revenue - fuelCost - operatingCost };
+    }
+
+    const usd = value => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(value) || 0);
+    const number = (value, digits = 1) => (Number(value) || 0).toFixed(digits);
+
     function routeColor(id) {
         if (routeColors.has(id)) return routeColors.get(id);
         const used = new Set(routeColors.values());
@@ -111,11 +124,14 @@
         const rows = currentList();
         list.innerHTML = rows.length ? rows.map(d => {
             if (activeFilter === 'finished') {
+                const finance = dispatchFinance(d);
                 return `<article class="success-card">
                     <div class="success-line">SUCCESS | DISPATCHED FROM ${esc(d.origin_name)} TO ${esc(d.destination_name)} AND ARRIVED IN ${esc(d.duration_minutes)} MINS</div>
                     <hr><div>The delivery was ${esc(d.timing)}.</div>
+                    <div class="dispatch-financials">${Number(finance.distance_miles || d.distance_miles || 0).toFixed(1)} MI · REVENUE ${usd(finance.revenue)} · DELIVERY COSTS ${usd((finance.fuel_cost || 0) + (finance.operating_cost || 0))} · NET ${usd(finance.profit)}</div>
                 </article>`;
             }
+            const finance = dispatchFinance(d);
             const actionButtons = [];
             if (d.status === 'needs_assistance') actionButtons.push(`<button class="dispatch-action help" data-action="assistance" data-id="${esc(d.id)}">SEND ROADSIDE</button>`);
             if (d.status === 'assistance_requested') actionButtons.push(`<button class="dispatch-action resume" data-action="resume" data-id="${esc(d.id)}">MARK REPAIRED & RESUME</button>`);
@@ -123,7 +139,8 @@
             return `<article class="dispatch-card ${esc(d.status)} ${d.id === selectedId ? 'selected' : ''}" data-select="${esc(d.id)}">
                 <div class="dispatch-row"><span class="dispatch-truck">${esc(d.truck_id)}</span><span class="dispatch-state">${statusLabel(d.status)}</span></div>
                 <div class="dispatch-destination">${esc(d.origin_name || '')} → ${esc(d.destination_name || '')}</div>
-                <div class="dispatch-details"><span>${esc(d.speed_mph ?? 0)} MPH · ${Math.round((d.progress || 0) * 100)}%</span><span>${d.status === 'cancelled' ? 'CANCELLED' : d.status === 'assistance_requested' ? 'HELP REQUESTED' : `ETA ${Math.max(0, Math.ceil((d.eta_minutes || 0) * (1 - (d.progress || 0))))} MIN`}</span></div>
+                <div class="dispatch-details"><span>${esc(d.speed_mph ?? 0)} MPH · ${Math.round((d.progress || 0) * 100)}%</span><span>${number(finance.distance_miles, 1)} / ${number(d.distance_miles, 1)} MI · ${d.status === 'cancelled' ? 'CANCELLED' : d.status === 'assistance_requested' ? 'HELP REQUESTED' : `ETA ${Math.max(0, Math.ceil((d.eta_minutes || 0) * (1 - (d.progress || 0))))} MIN`}</span></div>
+                <div class="dispatch-financials">EARNED ${usd(finance.revenue)} · COSTS ${usd((finance.fuel_cost || 0) + (finance.operating_cost || 0))} · NET ${usd(finance.profit)}</div>
                 ${d.trailer_id ? `<div class="dispatch-trailer">TRAILER ${esc(d.trailer_id)}</div>` : ''}
                 ${actionButtons.length ? `<div class="dispatch-actions">${actionButtons.join('')}</div>` : ''}
             </article>`;
@@ -246,6 +263,7 @@
 
     function popupContent(dispatch) {
         const eta = Math.max(0, Math.ceil((dispatch.eta_minutes || 0) * (1 - (dispatch.progress || 0))));
+        const finance = dispatchFinance(dispatch);
         return `<div class="truck-popup">
             <strong>${esc(dispatch.truck_id)}</strong>
             <span>${esc(dispatch.destination_name || 'Route')}</span>
@@ -253,6 +271,8 @@
             <span class="truck-popup-speed">${Number(dispatch.speed_mph ?? 0).toFixed(1)} MPH</span>
             <span>${statusLabel(dispatch.status)}</span>
             <span class="truck-popup-progress">${Math.round((dispatch.progress || 0) * 100)}% · ETA ${eta} MIN</span>
+            <span>${number(finance.distance_miles, 1)} / ${number(dispatch.distance_miles, 1)} MI TRAVELLED</span>
+            <span>REVENUE ${usd(finance.revenue)} · NET ${usd(finance.profit)}</span>
         </div>`;
     }
 

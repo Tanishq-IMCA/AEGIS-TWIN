@@ -45,5 +45,6 @@
 .truck-popup { display:flex; min-width:175px; flex-direction:column; gap:4px; font: .68rem var(--font-title); }
 .truck-popup strong { color:#f0f3f5; letter-spacing:.7px; }
 .truck-popup span { color:#9ca8b0; }
+.dispatch-financials { margin-top:7px; color:#aeb9be; font-size:.67rem; letter-spacing:.35px; line-height:1.6; }
 .truck-popup .truck-popup-speed { color:#eef4f7; font-size:.92rem; font-weight:700; letter-spacing:.45px; }
 @media(max-width:920px) { .dispatch-form { grid-template-columns:1fr 1fr; } .dispatch-form button { grid-column:1 / -1; } }

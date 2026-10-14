@@ -4,6 +4,8 @@ load_dotenv()
 
 import psutil
 import os
+import csv
+import io
 import secrets
 import requests
 import logging
@@ -11,8 +13,8 @@ import relay_manager
 import threading
 import time
 import re
-from datetime import datetime
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from datetime import datetime, timezone
+from flask import Flask, Response, render_template, request, jsonify, session, redirect, url_for
 import storage_manager
 import auth_database
 import difflib
@@ -658,7 +660,54 @@ def trailers_page():
 
 @app.route('/finances')
 def finances():
-    return redirect(url_for('trailers_page'))
+    return redirect(url_for('analytics_page'))
+
+@app.route('/analytics')
+def analytics_page():
+    return render_template('finances.html', title="Fleet Analytics")
+
+@app.route('/api/analytics')
+def analytics_api():
+    try:
+        return jsonify(dispatch_engine.get_analytics(get_current_user()))
+    except Exception:
+        app.logger.exception("ANALYTICS API ERROR")
+        return jsonify({"error": "Fleet analytics are temporarily unavailable."}), 500
+
+@app.route('/analytics.csv')
+def analytics_csv():
+    try:
+        data = dispatch_engine.get_analytics(get_current_user())
+        output = io.StringIO(newline="")
+        writer = csv.writer(output)
+        writer.writerow([
+            "recorded_at_utc", "status", "truck_id", "origin", "destination",
+            "distance_miles", "fuel_gallons", "revenue_usd", "fuel_cost_usd",
+            "delivery_operating_cost_usd", "net_profit_usd", "time_saved_minutes",
+        ])
+        for item in data["records"]:
+            try:
+                recorded = datetime.fromtimestamp(
+                    float(item.get("recorded_at", 0)), timezone.utc
+                ).isoformat(timespec="seconds")
+            except (TypeError, ValueError, OSError):
+                recorded = ""
+            writer.writerow([
+                recorded, item.get("status", ""), item.get("truck_id", ""),
+                item.get("origin", ""), item.get("destination", ""),
+                item.get("distance_miles", 0), item.get("fuel_gallons", 0),
+                item.get("revenue", 0), item.get("fuel_cost", 0),
+                item.get("operating_cost", 0), item.get("profit", 0),
+                item.get("time_saved_minutes", 0),
+            ])
+        response = Response(output.getvalue(), mimetype="text/csv")
+        disposition = "attachment" if request.args.get("download") == "1" else "inline"
+        response.headers["Content-Disposition"] = f'{disposition}; filename="aegis-delivery-analytics.csv"'
+        response.headers["Cache-Control"] = "no-store"
+        return response
+    except Exception:
+        app.logger.exception("ANALYTICS CSV ERROR")
+        return jsonify({"error": "The delivery CSV could not be generated."}), 500
 
 @app.route('/api/relay/storage_status')
 def relay_storage_status():

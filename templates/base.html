@@ -500,7 +500,7 @@
         <a href="{{ url_for('dashboard') }}" class="nav-item transition-link {% if request.endpoint == 'dashboard' %}active{% endif %}" data-index="0" title="AEGIS TWIN · Operations">
             <i class="fa-solid fa-house"></i>
         </a>
-        <a href="{{ url_for('trailers_page') }}" class="nav-item transition-link {% if request.endpoint in ['trailers_page', 'finances'] %}active{% endif %}" data-index="2" title="Trailer Availability">
+        <a href="{{ url_for('trailers_page') }}" class="nav-item transition-link {% if request.endpoint == 'trailers_page' %}active{% endif %}" data-index="2" title="Trailer Availability">
             <i class="fa-solid fa-truck-ramp-box"></i>
         </a>
         <a href="{{ url_for('manifest') }}" class="nav-item transition-link {% if request.endpoint in ['manifest', 'tasks'] %}active{% endif %}" data-index="3" title="Manifest">
@@ -516,6 +516,9 @@
              </a>
              <a href="{{ url_for('control_panel') }}" class="nav-item transition-link {% if request.endpoint == 'control_panel' %}active{% endif %}" data-index="6" title="Dispatch Control Panel">
                  <i class="fa-solid fa-truck-fast"></i>
+             </a>
+             <a href="{{ url_for('analytics_page') }}" class="nav-item transition-link {% if request.endpoint == 'analytics_page' %}active{% endif %}" data-index="8" title="Fleet Analytics">
+                 <i class="fa-solid fa-chart-pie"></i>
              </a>
              <a href="{{ url_for('settings') }}" class="nav-item transition-link {% if request.endpoint == 'settings' %}active{% endif %}" data-index="4" title="Settings">
                  <i class="fa-solid fa-gear"></i>
