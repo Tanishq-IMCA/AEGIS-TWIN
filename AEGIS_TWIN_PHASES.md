@@ -10,6 +10,7 @@
 - [x] Add Finished, Ongoing, Needs Attention, and Cancelled status views.
 - [x] Support dispatch creation, cancellation, roadside requests, and route resume from the dashboard.
 - [x] Use the existing animated notice popup for arrivals, slowdown, and incident updates without blurring the page.
+- [x] Simulate a one-time 10% chance of 120 mph overspeeding with yellow alerts and capped time-recovery estimates.
 
 ### Phase 2 — Control Panel
 - [x] Keep a dedicated no-map dispatch response page with roadside assistance and resume actions.
@@ -30,9 +31,16 @@
 ### Phase 7 — Engine Logs
 - [x] Add a live, filterable engine feed with UTC timestamps to millisecond precision.
 - [x] Log dispatch, movement, slowdown, delivery, roadside, resume, and cancellation events.
+- [x] Log simulated overspeed events.
 
 ### Phase 8 — Local run
 - [x] Allow PyCharm runs to load `.env`, use a local SQLite login store, and honor `HOST`, `PORT`, and `FLASK_DEBUG`.
+- [x] Provide a PyCharm `main.py` launcher backed by the project requirements file.
+
+### Phase 9 — Fleet analytics
+- [x] Add rolling per-delivery financial trends with two-minute time ticks and clearly separated cost scales.
+- [x] Keep a fixed recent-update window, animate incoming samples, and show hover readings.
+- [x] Include delivery, mileage, fuel, time-saved, and overspeed details in the CSV export.
 
 ## Product direction
 

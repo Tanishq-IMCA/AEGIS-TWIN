@@ -22,6 +22,16 @@
 
 ## Development Roadmap
 
+## Current application status
+
+- [x] Run the Flask/Leaflet Seattle fleet simulator from Replit or the PyCharm `main.py` launcher.
+- [x] Track delivery revenue, fuel and operating costs, mileage, and capped simulated time savings.
+- [x] Show a rolling per-delivery financial chart with two-minute time labels and a separate cost scale.
+- [x] Emit yellow notices for simulated 120 mph overspeed events and include the event in analytics exports.
+- [x] Keep map-provider credentials in environment secrets rather than source files.
+
+The experimental Deck.gl/FastAPI/RL phases below are older future-concept work, not completed features of the current Flask application.
+
 ## Contents
 
 - [Project Status Overview](#project-status-overview)

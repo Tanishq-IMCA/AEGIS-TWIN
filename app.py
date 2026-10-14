@@ -610,6 +610,7 @@ def dashboard():
     return render_template(
         'dashboard.html',
         title="IMCA NEXUS DASHBOARD",
+        # Keep provider credentials in Replit Secrets or local .env; never hard-code or commit them.
         carto_api_key=os.environ.get("CARTO_BASEMAPS_API_KEY", ""),
     )
 

@@ -140,16 +140,17 @@ The Nexus Experience employs a standardized error coding system for precise debu
     ```
 
 2.  **Environment Setup:**
-    Ensure you have Python 3 installed. It is recommended to use a virtual environment or `poetry` / `uv` (as indicated by lock files in the root).
+    Use Python 3.11 or later and select a project interpreter in PyCharm. PyCharm can install the dependencies from `requirements.txt`; if it does not prompt, run:
     ```bash
-    pip install -r requirements.txt
+    python -m pip install -r requirements.txt
     ```
+    Keep `CARTO_BASEMAPS_API_KEY` in Replit Secrets or a local `.env` file. Do not hard-code or distribute provider credentials.
 
 3.  **Boot Sequence:**
     ```bash
-    python app.py
+    python main.py
     ```
-    The Nexus will initialize on `0.0.0.0:5000`.
+    In PyCharm, open `main.py` and choose **Run**. The server uses `HOST`, `PORT`, and `FLASK_DEBUG` when set, and defaults to `0.0.0.0:5000`.
 
 4.  **First Run:**
     Navigate to `http://localhost:5000`. You will be redirected to the login/setup page to create your first primary Identity.

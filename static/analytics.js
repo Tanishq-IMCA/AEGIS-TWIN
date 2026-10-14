@@ -28,6 +28,7 @@
     let lastMetrics = {};
     const animations = new WeakMap();
     const lineCircles = new Map();
+    const linePaths = new Map();
     const barDays = new Map();
     const seenDispatchNotices = (() => {
         try {
@@ -202,18 +203,14 @@
         const series = [
             { key: 'revenue', label: 'Revenue', color: colors.revenue },
             { key: 'profit', label: 'Net profit', color: colors.profit },
-            { key: 'fuel_cost', label: 'Fuel cost', color: colors.fuel, dotted: true },
-            { key: 'operating_cost', label: 'Delivery operating cost', color: colors.operating, dotted: true }
+            { key: 'fuel_cost', label: 'Fuel cost', color: colors.fuel, dotted: true, secondary: true },
+            { key: 'operating_cost', label: 'Delivery operating cost', color: colors.operating, dotted: true, secondary: true }
         ];
         const width = 720, height = 280, left = 62, right = 18, top = 20, bottom = 48;
         const plotWidth = width - left - right, plotHeight = height - top - bottom;
-        const values = rows.flatMap(row => series.map(item => Number(row[item.key]) || 0));
-        const rawMin = Math.min(0, ...values), rawMax = Math.max(1, ...values);
-        const padding = Math.max(1, (rawMax - rawMin) * .08);
-        const min = rawMin < 0 ? rawMin - padding : 0;
-        const max = rawMax + padding;
-        const span = max - min || 1;
-        const baseline = top + plotHeight * (max / span);
+        const mainMax = Math.max(1, ...rows.flatMap(row => [Number(row.revenue) || 0, Number(row.profit) || 0])) * 1.08;
+        const costMax = Math.max(1, ...rows.flatMap(row => [Number(row.fuel_cost) || 0, Number(row.operating_cost) || 0])) * 1.08;
+        const baseline = top + plotHeight;
         const xAt = index => left + plotWidth * (
             (windowSize - rows.length + index) / Math.max(1, windowSize - 1)
         );
@@ -224,39 +221,67 @@
         for (let index = 0; index <= 4; index++) {
             const y = top + plotHeight * index / 4;
             axes.appendChild(svgEl('line', { x1: left, x2: width - right, y1: y, y2: y, class: 'chart-gridline' }));
-            const label = svgEl('text', { x: left - 8, y: y + 4, 'text-anchor': 'end' });
-            label.textContent = money(max - span * index / 4);
-            axes.appendChild(label);
+            const leftLabel = svgEl('text', { x: left - 8, y: y + 4, 'text-anchor': 'end' });
+            leftLabel.textContent = money(mainMax * (1 - index / 4));
+            axes.appendChild(leftLabel);
+            const rightLabel = svgEl('text', { x: width - right + 8, y: y + 4, 'text-anchor': 'start' });
+            rightLabel.textContent = money(costMax * (1 - index / 4));
+            axes.appendChild(rightLabel);
         }
         const yTitle = svgEl('text', { x: 14, y: top + plotHeight / 2, 'text-anchor': 'middle', class: 'axis-title', transform: `rotate(-90 14 ${top + plotHeight / 2})` });
-        yTitle.textContent = 'USD PER DELIVERY';
+        yTitle.textContent = 'USD REVENUE / NET';
         axes.appendChild(yTitle);
-        const tickIndexes = rows.length
-            ? [...new Set([0, Math.round((rows.length - 1) / 4), Math.round((rows.length - 1) / 2), Math.round((rows.length - 1) * 3 / 4), rows.length - 1])]
-            : [];
-        tickIndexes.forEach(index => {
+        const costTitle = svgEl('text', { x: width - 5, y: top + plotHeight / 2, 'text-anchor': 'middle', class: 'axis-title', transform: `rotate(90 ${width - 5} ${top + plotHeight / 2})` });
+        costTitle.textContent = 'USD DELIVERY COSTS';
+        axes.appendChild(costTitle);
+        const tickIndexes = [];
+        const timeBuckets = new Set();
+        rows.forEach((row, index) => {
+            const bucket = Math.floor(Number(row.recorded_at) / 120);
+            if (timeBuckets.has(bucket)) return;
+            timeBuckets.add(bucket);
+            tickIndexes.push({ index, bucket });
+        });
+        tickIndexes.forEach(({ index, bucket }) => {
             const label = svgEl('text', { x: xAt(index), y: height - 19, 'text-anchor': 'middle' });
-            label.textContent = formatUpdateTime(rows[index].recorded_at);
+            label.textContent = formatUpdateTime(bucket * 120);
             axes.appendChild(label);
         });
         const xTitle = svgEl('text', { x: left + plotWidth / 2, y: height - 3, 'text-anchor': 'middle', class: 'axis-title' });
-        xTitle.textContent = 'DELIVERY UPDATES · OLDEST → NEWEST';
+        xTitle.textContent = 'TIME · TWO-MINUTE TICKS';
         axes.appendChild(xTitle);
 
+        const activePathKeys = new Set();
         series.forEach(item => {
-            const coordinates = rows.map((row, index) => {
-                const x = xAt(index);
-                const y = top + plotHeight * (max - (Number(row[item.key]) || 0)) / span;
-                return [x, y];
+            const deliveryGroups = new Map();
+            rows.forEach((row, index) => {
+                const deliveryId = String(row.id || row.truck_id || index);
+                if (!deliveryGroups.has(deliveryId)) deliveryGroups.set(deliveryId, []);
+                deliveryGroups.get(deliveryId).push({ row, index });
             });
-            let path = paths.querySelector(`path[data-series="${item.key}"]`);
-            if (!path) {
-                path = svgEl('path', { stroke: item.color, class: `chart-series${item.dotted ? ' dotted' : ''}`, 'data-series': item.key });
-                paths.appendChild(path);
-            }
-            path.setAttribute('stroke', item.color);
-            path.setAttribute('class', `chart-series${item.dotted ? ' dotted' : ''}`);
-            animatePath(path, coordinates.length ? coordinates : [[left, baseline], [width - right, baseline]], baseline);
+            deliveryGroups.forEach((entries, deliveryId) => {
+                const pathKey = `${item.key}:${deliveryId}`;
+                activePathKeys.add(pathKey);
+                let path = linePaths.get(pathKey);
+                if (!path) {
+                    path = svgEl('path', {
+                        stroke: item.color,
+                        class: `chart-series${item.dotted ? ' dotted' : ''}`,
+                        'data-series': item.key,
+                        'data-delivery': deliveryId
+                    });
+                    paths.appendChild(path);
+                    linePaths.set(pathKey, path);
+                }
+                path.setAttribute('stroke', item.color);
+                path.setAttribute('class', `chart-series${item.dotted ? ' dotted' : ''}`);
+                const scaleMax = item.secondary ? costMax : mainMax;
+                const coordinates = entries.length > 1 ? entries.map(({ row, index }) => [
+                    xAt(index),
+                    top + plotHeight * (1 - (Number(row[item.key]) || 0) / scaleMax)
+                ]) : [];
+                animatePath(path, coordinates, baseline);
+            });
 
             let circles = lineCircles.get(item.key) || [];
             const updatedCircles = coordinates.map(([x, y], index) => {
@@ -277,6 +302,12 @@
             circles.slice(updatedCircles.length).forEach(circle => circle.remove());
             lineCircles.set(item.key, updatedCircles);
         });
+        for (const [pathKey, path] of linePaths) {
+            if (!activePathKeys.has(pathKey)) {
+                path.remove();
+                linePaths.delete(pathKey);
+            }
+        }
         renderLegend('line-legend', series);
     }
 
