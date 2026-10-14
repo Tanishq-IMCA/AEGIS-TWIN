@@ -426,14 +426,16 @@ def get_notices_since(username, after_id=None):
     saved = storage_manager.get_data(username, _NOTICE_KEY)
     saved = saved if isinstance(saved, list) else []
     cursor = saved[-1].get("id", "") if saved and isinstance(saved[-1], dict) else ""
-    if not after_id:
+    if after_id is None:
         return [], cursor
+    if after_id == "":
+        return saved[-8:], cursor
     for index, item in enumerate(saved):
         if isinstance(item, dict) and item.get("id") == after_id:
-            return saved[index + 1:], cursor
+            return saved[index + 1:][-8:], cursor
     if after_id == cursor:
         return [], cursor
-    return saved[-20:], cursor
+    return saved[-8:], cursor
 
 
 def autonomous_worker_tick(username):
