@@ -6,6 +6,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from functools import lru_cache
+from threading import RLock
 
 import requests
 import storage_manager
@@ -41,7 +42,17 @@ DESTINATIONS = [
 
 _STATE_KEY = "dispatch_engine"
 _LOG_KEY = "engine_logs"
+_AUTONOMY_KEY = "dispatch_autonomy"
+_NOTICE_KEY = "dispatch_notifications"
+_AUTONOMY_LOCK = RLock()
 _EARTH_MILES = 3958.8
+
+
+def _state_locked(function):
+    def wrapped(username, *args, **kwargs):
+        with _AUTONOMY_LOCK:
+            return function(username, *args, **kwargs)
+    return wrapped
 
 
 def _distance_miles(a, b):
@@ -110,7 +121,7 @@ def _build_dispatch(origin, destination, truck_id, progress=0, demo=False):
         "distance_miles": round(miles, 1),
         "progress": progress,
         "target_speed_mph": target_speed,
-        "speed_mph": target_speed,
+        "speed_mph": min(10, target_speed),
         "eta_minutes": eta_minutes,
         "expected_duration_minutes": eta_minutes,
         "started_at": start_time,
@@ -153,7 +164,7 @@ def _turn_points(dispatch):
         if previous_bearing is not None:
             change = abs((bearing - previous_bearing + 180) % 360 - 180)
             if change >= 35 and traveled - last_turn >= 0.035:
-                turns.append(traveled / total)
+                turns.append((traveled / total, change))
                 last_turn = traveled
         previous_bearing = bearing
         traveled += segment_length
@@ -163,11 +174,15 @@ def _turn_points(dispatch):
 def _current_speed(dispatch, elapsed):
     if dispatch["status"] in {"needs_assistance", "assistance_requested"}:
         return 0
-    near_turn = any(abs(dispatch["progress"] - turn) * dispatch["distance_miles"] < 0.06
-                    for turn in _turn_points(dispatch))
-    desired = min(30, dispatch["target_speed_mph"]) if near_turn else dispatch["target_speed_mph"]
-    current = dispatch.get("speed_mph", desired)
-    ramp = max(1, elapsed * 8)
+    nearby_turns = [
+        angle for turn, angle in _turn_points(dispatch)
+        if abs(dispatch["progress"] - turn) * dispatch["distance_miles"] < 0.06
+    ]
+    desired = 5 if any(angle >= 60 for angle in nearby_turns) else (
+        10 if nearby_turns else dispatch["target_speed_mph"]
+    )
+    current = dispatch.get("speed_mph", min(10, dispatch["target_speed_mph"]))
+    ramp = max(1, elapsed * (30 if desired < current else 4))
     return round(current + max(-ramp, min(ramp, desired - current)), 1)
 
 
@@ -286,6 +301,147 @@ def _advance(username, state):
     return notices
 
 
+def _autonomy_settings(username):
+    settings = storage_manager.get_data(username, _AUTONOMY_KEY)
+    if not isinstance(settings, dict):
+        settings = {}
+    try:
+        max_trucks = int(settings.get("max_trucks", 6))
+    except (TypeError, ValueError):
+        max_trucks = 6
+    try:
+        last_dispatch_at = float(settings.get("last_dispatch_at", 0))
+    except (TypeError, ValueError):
+        last_dispatch_at = 0
+    return {
+        "enabled": settings.get("enabled") is True,
+        "max_trucks": max(1, min(30, max_trucks)),
+        "last_dispatch_at": last_dispatch_at,
+    }
+
+
+def get_autonomy(username):
+    settings = _autonomy_settings(username)
+    return {"enabled": settings["enabled"], "max_trucks": settings["max_trucks"]}
+
+
+@_state_locked
+def update_autonomy(username, updates):
+    settings = _autonomy_settings(username)
+    if "enabled" in updates:
+        if not isinstance(updates["enabled"], bool):
+            raise ValueError("Autonomous mode must be enabled or disabled.")
+        if updates["enabled"] and not settings["enabled"]:
+            settings["last_dispatch_at"] = time.time()
+        settings["enabled"] = updates["enabled"]
+    if "max_trucks" in updates:
+        try:
+            max_trucks = int(updates["max_trucks"])
+        except (TypeError, ValueError) as error:
+            raise ValueError("Maximum truck capacity must be a whole number.") from error
+        if isinstance(updates["max_trucks"], bool) or not 1 <= max_trucks <= 30:
+            raise ValueError("Maximum truck capacity must be between 1 and 30.")
+        settings["max_trucks"] = max_trucks
+    storage_manager.save_data(username, _AUTONOMY_KEY, settings)
+    return {"enabled": settings["enabled"], "max_trucks": settings["max_trucks"]}
+
+
+def _autonomous_tick(username):
+    with _AUTONOMY_LOCK:
+        return _autonomous_tick_locked(username)
+
+
+def _autonomous_tick_locked(username):
+    settings = _autonomy_settings(username)
+    if not settings["enabled"]:
+        return []
+
+    notices = []
+    now = time.time()
+    state = _load_state(username)
+    for dispatch in list(state["active"]):
+        if dispatch["status"] == "needs_assistance":
+            assisted = request_assistance(username, dispatch["id"])
+            message = f"Autonomous roadside assistance dispatched for {assisted['truck_id']}."
+            notices.append({
+                "id": f"auto-roadside-{assisted['id']}",
+                "title": "ROADSIDE ASSISTANCE",
+                "message": message,
+                "error": False,
+            })
+        elif dispatch["status"] == "assistance_requested":
+            requested_at = float(dispatch.get("assistance_requested_at") or now)
+            if now - requested_at >= 6:
+                resumed = resume_dispatch(username, dispatch["id"])
+                message = f"{resumed['truck_id']} is moving again after roadside service."
+                notices.append({
+                    "id": f"auto-resume-{resumed['id']}",
+                    "title": "TRUCK RESUMED",
+                    "message": message,
+                    "error": False,
+                })
+
+    state = _load_state(username)
+    if (
+        now - settings["last_dispatch_at"] >= 3
+        and len(state["active"]) < settings["max_trucks"]
+    ):
+        settings["last_dispatch_at"] = now
+        storage_manager.save_data(username, _AUTONOMY_KEY, settings)
+        origin = random.choice(WAREHOUSES)
+        destination = random.choice(DESTINATIONS)
+        try:
+            dispatch = create_dispatch(username, origin["id"], destination["id"])
+            message = f"{dispatch['truck_id']} assigned: {origin['name']} to {destination['name']}."
+            notices.append({
+                "id": f"auto-dispatch-{dispatch['id']}",
+                "title": "AUTONOMOUS DISPATCH",
+                "message": message,
+                "error": False,
+            })
+        except ValueError as error:
+            notices.append({
+                "id": f"auto-dispatch-error-{int(now)}",
+                "title": "AUTO-DISPATCH PAUSED",
+                "message": str(error),
+                "error": True,
+            })
+    return notices
+
+
+def _record_notices(username, notices):
+    if not notices:
+        return
+    saved = storage_manager.get_data(username, _NOTICE_KEY)
+    saved = saved if isinstance(saved, list) else []
+    known = {item.get("id") for item in saved if isinstance(item, dict)}
+    for item in notices:
+        if item.get("id") not in known:
+            saved.append(item)
+            known.add(item.get("id"))
+    storage_manager.save_data(username, _NOTICE_KEY, saved[-200:])
+
+
+def get_notices_since(username, after_id=None):
+    saved = storage_manager.get_data(username, _NOTICE_KEY)
+    saved = saved if isinstance(saved, list) else []
+    cursor = saved[-1].get("id", "") if saved and isinstance(saved[-1], dict) else ""
+    if not after_id:
+        return [], cursor
+    for index, item in enumerate(saved):
+        if isinstance(item, dict) and item.get("id") == after_id:
+            return saved[index + 1:], cursor
+    if after_id == cursor:
+        return [], cursor
+    return saved[-20:], cursor
+
+
+def autonomous_worker_tick(username):
+    if _autonomy_settings(username)["enabled"]:
+        get_state(username)
+
+
+@_state_locked
 def get_state(username):
     state = _load_state(username)
     for dispatch in state["active"]:
@@ -294,15 +450,33 @@ def get_state(username):
     for dispatch in state["active"]:
         _sync_trailer(username, dispatch, dispatch["status"])
     storage_manager.save_data(username, _STATE_KEY, state)
+
+    auto_notices = _autonomous_tick(username)
+    if auto_notices:
+        state = _load_state(username)
+        for dispatch in state["active"]:
+            _assign_trailer(username, dispatch)
+            _sync_trailer(username, dispatch, dispatch["status"])
+        storage_manager.save_data(username, _STATE_KEY, state)
+        notices.extend(auto_notices)
+    _record_notices(username, notices)
     return state, notices
 
 
 def create_dispatch(username, origin_id=None, destination_id=None):
+    with _AUTONOMY_LOCK:
+        return _create_dispatch_locked(username, origin_id, destination_id)
+
+
+def _create_dispatch_locked(username, origin_id=None, destination_id=None):
     origin = next((item for item in WAREHOUSES if item["id"] == origin_id), None)
     destination = next((item for item in DESTINATIONS if item["id"] == destination_id), None)
     if origin is None or destination is None:
         raise ValueError("Choose a valid warehouse and Seattle destination.")
     state = _load_state(username)
+    capacity = _autonomy_settings(username)["max_trucks"]
+    if len(state["active"]) >= capacity:
+        raise ValueError(f"Fleet capacity reached ({capacity} active trucks).")
     truck_number = random.randint(100, 999)
     used_trucks = {dispatch["truck_id"] for dispatch in state["active"]}
     while f"AEGIS-{truck_number}" in used_trucks:
@@ -319,6 +493,7 @@ def create_dispatch(username, origin_id=None, destination_id=None):
     return dispatch
 
 
+@_state_locked
 def request_assistance(username, dispatch_id):
     state = _load_state(username)
     dispatch = next((item for item in state["active"] if item["id"] == dispatch_id), None)
@@ -333,6 +508,7 @@ def request_assistance(username, dispatch_id):
     return dispatch
 
 
+@_state_locked
 def resume_dispatch(username, dispatch_id):
     state = _load_state(username)
     dispatch = next((item for item in state["active"] if item["id"] == dispatch_id), None)
@@ -348,6 +524,7 @@ def resume_dispatch(username, dispatch_id):
     return dispatch
 
 
+@_state_locked
 def cancel_dispatch(username, dispatch_id):
     state = _load_state(username)
     dispatch = next((item for item in state["active"] if item["id"] == dispatch_id), None)

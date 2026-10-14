@@ -37,10 +37,13 @@
 .leaflet-control-attribution { background:rgba(8,12,16,.65)!important; color:#77828b!important; font-size:9px!important; }
 .leaflet-control-attribution a { color:#aab4bc!important; }
 .warehouse-icon { color:#d8dee3; background:#10161b; border:1px solid #78838b; width:10px; height:10px; border-radius:3px; }
+.truck-arrow-marker { border:0; background:transparent; }
+.truck-arrow-svg { display:block; width:28px; height:28px; filter:drop-shadow(0 1px 4px rgba(0,0,0,.85)); transition:transform .1s linear; }
 .truck-map-popup .leaflet-popup-content-wrapper { background:rgba(12,17,21,.94); color:#e1e7eb; border:1px solid rgba(255,255,255,.14); border-radius:9px; box-shadow:0 10px 28px rgba(0,0,0,.35); backdrop-filter:blur(14px); }
 .truck-map-popup .leaflet-popup-content { margin:10px 12px; }
 .truck-map-popup .leaflet-popup-tip { background:#11171c; border:1px solid rgba(255,255,255,.12); }
-.truck-popup { display:flex; min-width:150px; flex-direction:column; gap:4px; font: .68rem var(--font-title); }
+.truck-popup { display:flex; min-width:175px; flex-direction:column; gap:4px; font: .68rem var(--font-title); }
 .truck-popup strong { color:#f0f3f5; letter-spacing:.7px; }
 .truck-popup span { color:#9ca8b0; }
+.truck-popup .truck-popup-speed { color:#eef4f7; font-size:.92rem; font-weight:700; letter-spacing:.45px; }
 @media(max-width:920px) { .dispatch-form { grid-template-columns:1fr 1fr; } .dispatch-form button { grid-column:1 / -1; } }

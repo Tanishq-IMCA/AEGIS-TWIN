@@ -15,6 +15,15 @@
     .panel-top { padding:13px 14px 10px; border-bottom:1px solid rgba(255,255,255,.07); }
     .panel-title { color:#e0e5e9; font: .98rem var(--font-title); letter-spacing:1px; }
     .panel-subtitle { color:#9aa4ac; font-size:.78rem; margin-top:5px; }
+    .panel-head-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .autonomy-toggle { display:flex; align-items:center; gap:6px; border:1px solid rgba(255,255,255,.12); border-radius:7px; background:#11171c; color:#aab4bc; padding:7px 9px; font:.58rem var(--font-title); letter-spacing:.65px; cursor:pointer; white-space:nowrap; }
+    .autonomy-toggle::before { content:""; width:6px; height:6px; border-radius:50%; background:#737e87; }
+    .autonomy-toggle.is-on { border-color:rgba(98,195,145,.45); color:#a9e2bf; background:rgba(67,143,101,.13); }
+    .autonomy-toggle.is-on::before { background:#73d39b; box-shadow:0 0 8px #73d39b; }
+    .autonomy-toggle:disabled { opacity:.55; cursor:wait; }
+    .capacity-row { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px; padding-top:9px; border-top:1px solid rgba(255,255,255,.06); }
+    .capacity-row label { color:#8d989f; font:.56rem var(--font-title); letter-spacing:.55px; }
+    .capacity-row input { width:58px; height:29px; border:1px solid rgba(255,255,255,.12); border-radius:6px; background:#11171c; color:#e0e5e9; padding:0 7px; font:.7rem var(--font-title); text-align:center; }
     .status-tabs { display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:10px 12px; }
     .status-tab { display:flex; justify-content:space-between; gap:5px; border:1px solid rgba(255,255,255,.08); border-radius:7px; background:#10151a; color:#b6c0c7; padding:9px; cursor:pointer; font: .72rem var(--font-title); letter-spacing:.35px; }
     .status-tab.active { border-color:rgba(255,255,255,.2); color:#edf1f3; background:#171d22; }
@@ -65,10 +74,20 @@
     <div class="ops-layout">
         <section class="map-frame">
             <div id="dispatch-map" aria-label="Seattle live truck map"></div>
-            <div class="map-caption" id="map-caption">SEATTLE OPERATIONS · ROUTE SHOWN FOR SELECTED TRUCK</div>
+            <div class="map-caption" id="map-caption">SEATTLE OPERATIONS · LIVE COLOR-CODED ROUTES</div>
         </section>
         <aside class="status-panel">
-            <header class="panel-top"><div class="panel-title">DISPATCH STATUS</div><div class="panel-subtitle" id="live-state">Connecting to fleet…</div></header>
+            <header class="panel-top">
+                <div class="panel-head-row">
+                    <div class="panel-title">DISPATCH STATUS</div>
+                    <button class="autonomy-toggle" id="autonomy-toggle" type="button" aria-pressed="false">AUTO OFF</button>
+                </div>
+                <div class="panel-subtitle" id="live-state">Connecting to fleet…</div>
+                <div class="capacity-row">
+                    <label for="max-active-trucks">MAX ACTIVE TRUCKS</label>
+                    <input id="max-active-trucks" type="number" min="1" max="30" step="1" value="6" aria-label="Maximum active trucks and trailers" title="Maximum number of active trucks on the map">
+                </div>
+            </header>
             <div class="status-tabs">
                 <button class="status-tab" data-filter="finished">FINISHED <span class="status-count" data-count="finished">0</span></button>
                 <button class="status-tab active" data-filter="ongoing">ONGOING <span class="status-count" data-count="ongoing">0</span></button>

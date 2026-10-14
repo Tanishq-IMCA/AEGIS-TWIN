@@ -103,10 +103,11 @@
     }
     function render() {
         const classified = trailers.map(t => ({...t, state:stateInfo(t)}));
-        document.getElementById('count-transit').textContent = classified.filter(t => t.dispatch_active).length;
-        document.getElementById('count-delayed').textContent = classified.filter(t => t.state.tone === 'delayed').length;
-        document.getElementById('count-attention').textContent = classified.filter(t => t.state.tone === 'attention').length;
-        document.getElementById('trailer-models').innerHTML = classified.length ? classified.map(t => {
+        const active = classified.filter(t => t.dispatch_active);
+        document.getElementById('count-transit').textContent = active.length;
+        document.getElementById('count-delayed').textContent = active.filter(t => t.state.tone === 'delayed').length;
+        document.getElementById('count-attention').textContent = active.filter(t => t.state.tone === 'attention').length;
+        document.getElementById('trailer-models').innerHTML = active.length ? active.map(t => {
             const progress = Math.max(0, Math.min(100, Math.round((t.progress || 0) * 100)));
             return `<article class="trailer-model ${t.state.tone}">
                 ${vehicleSvg(t.state.tone)}
@@ -114,7 +115,7 @@
                 <div class="trailer-model-meta"><span>${esc(t.truck_id ? `TRUCK ${t.truck_id}` : t.hub)}</span><span>${esc(t.destination_name || (warehouses.find(w => w.id === t.hub)?.name || t.hub))}</span></div>
                 ${t.dispatch_active ? `<div class="trailer-progress"><span style="width:${progress}%"></span></div>` : ''}
             </article>`;
-        }).join('') : '<div class="trailers-empty">No trailers recorded.</div>';
+        }).join('') : '<div class="trailers-empty">No active trucks. Finished trailers remain in inventory below.</div>';
         document.getElementById('trailer-list').innerHTML = classified.length ? classified.map(t => {
             const hub = warehouses.find(item => item.id === t.hub)?.name || t.hub;
             return `<div class="trailer-row">

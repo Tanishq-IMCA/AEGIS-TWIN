@@ -59,6 +59,19 @@ def background_sync():
             logging.error(f"BACKGROUND SYNC ERROR: {e}")
             time.sleep(60)
 
+def autonomous_dispatch_sync():
+    """Keep enabled fleets moving even when their dashboard is not open."""
+    while True:
+        try:
+            for username in storage_manager.list_users():
+                try:
+                    dispatch_engine.autonomous_worker_tick(username)
+                except Exception as error:
+                    logging.error(f"AUTONOMOUS DISPATCH ERROR for {username}: {error}")
+        except Exception as error:
+            logging.error(f"AUTONOMOUS DISPATCH WORKER ERROR: {error}")
+        time.sleep(1)
+
 def process_relay_packet(packet):
     """Integrates relay packets into local storage."""
     try:
@@ -107,6 +120,8 @@ def process_relay_packet(packet):
 # Start the background thread
 sync_thread = threading.Thread(target=background_sync, daemon=True)
 sync_thread.start()
+autonomy_thread = threading.Thread(target=autonomous_dispatch_sync, daemon=True)
+autonomy_thread.start()
 
 # --- AUTH MIDDLEWARE ---
 def get_current_user():
@@ -717,13 +732,33 @@ def dispatch_api():
 
         if request.args.get("catalog") == "1":
             return jsonify({"catalog": dispatch_engine.catalog()})
-        state, notices = dispatch_engine.get_state(username)
-        return jsonify({**state, "notices": notices})
+        state, _ = dispatch_engine.get_state(username)
+        notices, cursor = dispatch_engine.get_notices_since(
+            username, request.args.get("notice_after")
+        )
+        return jsonify({**state, "notices": notices, "notice_cursor": cursor})
     except (KeyError, ValueError) as error:
         return jsonify({"error": str(error)}), 400
     except Exception as error:
         app.logger.exception("DISPATCH API ERROR")
         return jsonify({"error": "Dispatch control is temporarily unavailable."}), 500
+
+@app.route('/api/dispatch/autonomy', methods=['GET', 'PATCH'])
+def dispatch_autonomy_api():
+    username = get_current_user()
+    try:
+        if request.method == 'PATCH':
+            settings = dispatch_engine.update_autonomy(
+                username, request.get_json(silent=True) or {}
+            )
+        else:
+            settings = dispatch_engine.get_autonomy(username)
+        return jsonify({"autonomy": settings})
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except Exception:
+        app.logger.exception("DISPATCH AUTONOMY ERROR")
+        return jsonify({"error": "Autonomous dispatch settings are unavailable."}), 500
 
 @app.route('/api/dispatch/<dispatch_id>/assistance', methods=['POST'])
 def dispatch_assistance(dispatch_id):

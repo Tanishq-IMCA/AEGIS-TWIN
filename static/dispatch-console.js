@@ -11,6 +11,9 @@
         }).setView([47.6062, -122.3321], 11)
         : null;
     const markers = new Map();
+    const routeColors = new Map();
+    const routeGeometry = new Map();
+    const routeLayers = new Map();
     const routeLayer = map ? L.layerGroup().addTo(map) : null;
     let selectedId = null;
     let followingId = null;
@@ -18,8 +21,8 @@
     let catalog = { warehouses: [], destinations: [] };
     let snapshot = { active: [], completed: [], cancelled: [] };
     const progressAnchors = new Map();
-    let travelledLine = null;
-    let futureLine = null;
+    let autonomy = { enabled: false, max_trucks: 6 };
+    let noticeCursor = sessionStorage.getItem('dispatch_notice_cursor') || '';
 
     if (map) {
         const cartoKey = window.CARTO_BASEMAPS_KEY || '';
@@ -35,7 +38,7 @@
         }
         map.on('click', () => {
             if (followingId) {
-                markers.get(followingId)?.dot.closePopup();
+                markers.get(followingId)?.arrow.closePopup();
                 followingId = null;
             }
             map.closePopup();
@@ -44,8 +47,6 @@
         mapNode.innerHTML = '<div class="empty-state">Map tiles are unavailable. Check the network connection.</div>';
     }
 
-    const statusColor = status => status === 'needs_assistance' || status === 'assistance_requested'
-        ? '#d77c83' : status === 'slowed' ? '#d5bf74' : '#65c39a';
     const statusLabel = status => ({
         en_route: 'ONGOING',
         slowed: 'SLOWED',
@@ -53,6 +54,28 @@
         assistance_requested: 'ROADSIDE REQUESTED',
         cancelled: 'CANCELLED'
     }[status] || status.toUpperCase());
+
+    function routeColor(id) {
+        if (routeColors.has(id)) return routeColors.get(id);
+        const used = new Set(routeColors.values());
+        let hue;
+        do { hue = Math.floor(Math.random() * 360); }
+        while (used.has(`hsl(${hue} 76% 62%)`));
+        const color = `hsl(${hue} 76% 62%)`;
+        routeColors.set(id, color);
+        return color;
+    }
+
+    function arrowIcon(color, bearing) {
+        return L.divIcon({
+            className: 'truck-arrow-marker',
+            html: `<svg class="truck-arrow-svg" viewBox="0 0 26 26" aria-hidden="true" style="transform:rotate(${bearing}deg)">
+                <path d="M13 2L23 23L13 18L3 23Z" fill="${color}" stroke="#f4f7f8" stroke-width="1.25" stroke-linejoin="round"/>
+            </svg>`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
+        });
+    }
 
     function notice(title, message, error = false) {
         window.showNotice?.(esc(title), esc(message), 3500, false, error);
@@ -109,73 +132,98 @@
             button.classList.toggle('active', button.dataset.filter === activeFilter));
     }
 
-    function drawRoute(dispatch) {
-        if (!map || !routeLayer) return;
-        if (!dispatch || !Array.isArray(dispatch.route) || dispatch.route.length < 2) {
-            if (travelledLine) routeLayer.removeLayer(travelledLine);
-            if (futureLine) routeLayer.removeLayer(futureLine);
-            travelledLine = futureLine = null;
-            return;
-        }
-        const route = dispatch.route.map(point => L.latLng(point[0], point[1]));
-        const segmentLengths = [];
+    function getRouteGeometry(id, points) {
+        if (routeGeometry.has(id)) return routeGeometry.get(id);
+        if (!Array.isArray(points) || points.length < 2) return null;
+        const route = points.map(point => L.latLng(point[0], point[1]));
+        const lengths = [];
         let total = 0;
         for (let i = 1; i < route.length; i++) {
             const length = route[i - 1].distanceTo(route[i]);
-            segmentLengths.push(length);
+            lengths.push(length);
             total += length;
         }
-        let remainingMeters = total * Math.max(0, Math.min(1, dispatch.progress || 0));
-        const travelled = [route[0]];
+        const geometry = { route, lengths, total };
+        routeGeometry.set(id, geometry);
+        return geometry;
+    }
+
+    function drawRoute(dispatch) {
+        if (!map || !routeLayer) return;
+        const geometry = getRouteGeometry(dispatch.id, dispatch.route);
+        if (!geometry) return;
+        const color = routeColor(dispatch.id);
+        const progress = Math.max(0, Math.min(1, dispatch.progress || 0));
+        let remaining = geometry.total * progress;
+        const travelled = [geometry.route[0]];
         const future = [];
-        for (let i = 0; i < segmentLengths.length; i++) {
-            const length = segmentLengths[i];
-            if (remainingMeters >= length) {
-                travelled.push(route[i + 1]);
-                remainingMeters -= length;
+        for (let i = 0; i < geometry.lengths.length; i++) {
+            const length = geometry.lengths[i];
+            if (remaining >= length) {
+                travelled.push(geometry.route[i + 1]);
+                remaining -= length;
             } else {
-                const t = length ? remainingMeters / length : 0;
+                const t = length ? remaining / length : 0;
                 const point = L.latLng(
-                    route[i].lat + (route[i + 1].lat - route[i].lat) * t,
-                    route[i].lng + (route[i + 1].lng - route[i].lng) * t
+                    geometry.route[i].lat + (geometry.route[i + 1].lat - geometry.route[i].lat) * t,
+                    geometry.route[i].lng + (geometry.route[i + 1].lng - geometry.route[i].lng) * t
                 );
                 travelled.push(point);
-                future.push(point, ...route.slice(i + 1));
+                future.push(point, ...geometry.route.slice(i + 1));
                 break;
             }
         }
-        if (future.length > 1) {
-            if (!futureLine) futureLine = L.polyline(future, { color: '#9ba5ad', weight: 2, opacity: .45, dashArray: '3 7' }).addTo(routeLayer);
-            else futureLine.setLatLngs(future);
-        }
-        if (travelled.length > 1) {
-            if (!travelledLine) travelledLine = L.polyline(travelled, { color: '#79a9ce', weight: 3, opacity: .86 }).addTo(routeLayer);
-            else travelledLine.setLatLngs(travelled);
-        }
+        const layers = routeLayers.get(dispatch.id) || {};
+        const setLine = (key, points, style) => {
+            if (points.length < 2) {
+                if (layers[key]) routeLayer.removeLayer(layers[key]);
+                layers[key] = null;
+            } else if (layers[key]) {
+                layers[key].setLatLngs(points).setStyle({ color });
+            } else {
+                layers[key] = L.polyline(points, { ...style, color }).addTo(routeLayer);
+            }
+        };
+        setLine('travelled', travelled, { weight: 2.5, opacity: .9, dashArray: '1 6', lineCap: 'round' });
+        setLine('future', future, { weight: 2, opacity: .56, dashArray: '1 7', lineCap: 'round' });
+        routeLayers.set(dispatch.id, layers);
     }
 
-    function positionOnRoute(points, progress) {
-        if (!points || points.length < 2) return null;
-        const route = points.map(point => L.latLng(point[0], point[1]));
-        const segments = [];
-        let total = 0;
-        for (let i = 1; i < route.length; i++) {
-            const length = route[i - 1].distanceTo(route[i]);
-            segments.push(length);
-            total += length;
-        }
-        let distance = total * Math.max(0, Math.min(1, progress || 0));
-        for (let i = 0; i < segments.length; i++) {
-            if (distance <= segments[i] || i === segments.length - 1) {
-                const t = segments[i] ? distance / segments[i] : 0;
+    function positionOnRoute(id, points, progress) {
+        const geometry = getRouteGeometry(id, points);
+        if (!geometry) return null;
+        let distance = geometry.total * Math.max(0, Math.min(1, progress || 0));
+        for (let i = 0; i < geometry.lengths.length; i++) {
+            if (distance <= geometry.lengths[i] || i === geometry.lengths.length - 1) {
+                const t = geometry.lengths[i] ? distance / geometry.lengths[i] : 0;
                 return L.latLng(
-                    route[i].lat + (route[i + 1].lat - route[i].lat) * t,
-                    route[i].lng + (route[i + 1].lng - route[i].lng) * t
+                    geometry.route[i].lat + (geometry.route[i + 1].lat - geometry.route[i].lat) * t,
+                    geometry.route[i].lng + (geometry.route[i + 1].lng - geometry.route[i].lng) * t
                 );
             }
-            distance -= segments[i];
+            distance -= geometry.lengths[i];
         }
-        return route[route.length - 1];
+        return geometry.route[geometry.route.length - 1];
+    }
+
+    function bearingOnRoute(id, points, progress) {
+        const geometry = getRouteGeometry(id, points);
+        if (!geometry) return 0;
+        let distance = geometry.total * Math.max(0, Math.min(1, progress || 0));
+        let segment = geometry.lengths.length - 1;
+        for (let i = 0; i < geometry.lengths.length; i++) {
+            if (distance <= geometry.lengths[i]) { segment = i; break; }
+            distance -= geometry.lengths[i];
+        }
+        const start = geometry.route[segment];
+        const end = geometry.route[segment + 1];
+        return Math.atan2(end.lng - start.lng, end.lat - start.lat) * 180 / Math.PI;
+    }
+
+    function liveSpeed(anchor, now) {
+        if (['needs_assistance', 'assistance_requested'].includes(anchor.status)) return 0;
+        const ramp = Math.min(1, Math.max(0, (now - anchor.at) / 1000));
+        return anchor.speedFrom + (anchor.speedTo - anchor.speedFrom) * ramp;
     }
 
     function liveDispatch(dispatch, now) {
@@ -183,11 +231,17 @@
         if (!anchor) return dispatch;
         const paused = ['needs_assistance', 'assistance_requested'].includes(anchor.status);
         const elapsed = Math.max(0, (now - anchor.at) / 1000);
+        const ramp = Math.min(1, elapsed);
+        const currentSpeed = liveSpeed(anchor, now);
+        const milesMoved = paused ? 0 : (
+            ((anchor.speedFrom + liveSpeed(anchor, anchor.at + ramp * 1000)) / 2) * ramp
+            + anchor.speedTo * Math.max(0, elapsed - ramp)
+        ) / 3600;
         const distance = Math.max(Number(anchor.distance) || 0, 0.1);
         const progress = paused
             ? anchor.progress
-            : Math.min(1, anchor.progress + elapsed * (Number(anchor.speed) || 0) / (3600 * distance));
-        return { ...dispatch, progress };
+            : Math.min(1, anchor.progress + milesMoved / distance);
+        return { ...dispatch, progress, speed_mph: Number(currentSpeed.toFixed(1)) };
     }
 
     function popupContent(dispatch) {
@@ -196,8 +250,9 @@
             <strong>${esc(dispatch.truck_id)}</strong>
             <span>${esc(dispatch.destination_name || 'Route')}</span>
             ${dispatch.trailer_id ? `<span>TRAILER ${esc(dispatch.trailer_id)}</span>` : ''}
-            <span>${esc(dispatch.speed_mph ?? 0)} MPH · ${statusLabel(dispatch.status)}</span>
-            <span>${Math.round((dispatch.progress || 0) * 100)}% · ETA ${eta} MIN</span>
+            <span class="truck-popup-speed">${Number(dispatch.speed_mph ?? 0).toFixed(1)} MPH</span>
+            <span>${statusLabel(dispatch.status)}</span>
+            <span class="truck-popup-progress">${Math.round((dispatch.progress || 0) * 100)}% · ETA ${eta} MIN</span>
         </div>`;
     }
 
@@ -207,11 +262,10 @@
         followingId = dispatch.id;
         const pair = markers.get(dispatch.id);
         if (pair) {
-            pair.dot.setPopupContent(popupContent(dispatch)).openPopup();
-            map.panTo(pair.dot.getLatLng(), { animate: false });
+            pair.arrow.setPopupContent(popupContent(dispatch)).openPopup();
+            map.panTo(pair.arrow.getLatLng(), { animate: false });
         }
         renderList();
-        drawRoute(dispatch);
     }
 
     function renderMap() {
@@ -219,31 +273,42 @@
         const liveIds = new Set(snapshot.active.map(d => d.id));
         for (const [id, marker] of markers) {
             if (!liveIds.has(id)) {
-                map.removeLayer(marker.halo);
-                map.removeLayer(marker.dot);
+                map.removeLayer(marker.arrow);
                 markers.delete(id);
+                const layers = routeLayers.get(id);
+                if (layers?.travelled) routeLayer.removeLayer(layers.travelled);
+                if (layers?.future) routeLayer.removeLayer(layers.future);
+                routeLayers.delete(id);
+                routeGeometry.delete(id);
+                routeColors.delete(id);
             }
         }
         snapshot.active.forEach(dispatch => {
             const current = liveDispatch(dispatch, performance.now());
-            const point = positionOnRoute(current.route || [], current.progress);
+            const point = positionOnRoute(dispatch.id, current.route || [], current.progress);
             if (!point) return;
-            const color = statusColor(current.status);
+            const color = routeColor(dispatch.id);
+            const bearing = bearingOnRoute(dispatch.id, current.route || [], current.progress);
             let pair = markers.get(dispatch.id);
             if (!pair) {
-                const halo = L.circleMarker(point, { radius: 16, color, fillColor: color, fillOpacity: .13, weight: 1, opacity: .35 }).addTo(map);
-                const dot = L.circleMarker(point, { radius: 10, color: '#e7edf1', fillColor: color, fillOpacity: 1, weight: 2.5, bubblingMouseEvents: false }).addTo(map);
-                dot.bindPopup(popupContent(current), { closeButton: false, autoClose: false, closeOnClick: false, className: 'truck-map-popup' });
-                dot.on('click', event => {
+                const arrow = L.marker(point, {
+                    icon: arrowIcon(color, bearing),
+                    keyboard: false,
+                    bubblingMouseEvents: false,
+                    riseOnHover: true
+                }).addTo(map);
+                arrow.bindPopup(popupContent(current), { closeButton: false, autoClose: false, closeOnClick: false, className: 'truck-map-popup' });
+                arrow.on('click', event => {
                     if (event.originalEvent) L.DomEvent.stopPropagation(event.originalEvent);
                     followDispatch(liveDispatch(snapshot.active.find(item => item.id === dispatch.id), performance.now()));
                 });
-                pair = { halo, dot };
+                pair = { arrow, color };
                 markers.set(dispatch.id, pair);
             } else {
-                pair.halo.setLatLng(point).setStyle({ color, fillColor: color });
-                pair.dot.setLatLng(point).setStyle({ color: '#e7edf1', fillColor: color }).setPopupContent(popupContent(current));
+                pair.arrow.setLatLng(point).setPopupContent(popupContent(current));
+                pair.color = color;
             }
+            drawRoute(current);
         });
         if (!snapshot.active.some(d => d.id === selectedId)) selectedId = snapshot.active[0]?.id || null;
         if (!snapshot.active.some(d => d.id === followingId)) followingId = null;
@@ -256,13 +321,17 @@
             completed: state.completed || [],
             cancelled: state.cancelled || []
         };
-        snapshot.active.forEach(dispatch => progressAnchors.set(dispatch.id, {
-            progress: Number(dispatch.progress) || 0,
-            at: receivedAt,
-            speed: Number(dispatch.speed_mph) || 0,
-            distance: Number(dispatch.distance_miles) || 0.1,
-            status: dispatch.status
-        }));
+        snapshot.active.forEach(dispatch => {
+            const previous = progressAnchors.get(dispatch.id);
+            progressAnchors.set(dispatch.id, {
+                progress: Number(dispatch.progress) || 0,
+                at: receivedAt,
+                speedFrom: previous ? liveSpeed(previous, receivedAt) : Number(dispatch.speed_mph) || 0,
+                speedTo: Number(dispatch.speed_mph) || 0,
+                distance: Number(dispatch.distance_miles) || 0.1,
+                status: dispatch.status
+            });
+        });
         const counts = {
             finished: snapshot.completed.length,
             ongoing: snapshot.active.filter(d => d.status === 'en_route').length,
@@ -274,14 +343,15 @@
             if (node) node.textContent = value;
         });
         const live = document.getElementById('live-state');
-        if (live) live.textContent = `${snapshot.active.length} ACTIVE`;
+        if (live) live.textContent = `${snapshot.active.length} / ${autonomy.max_trucks} ACTIVE${autonomy.enabled ? ' · AUTONOMOUS' : ''}`;
         const caption = document.getElementById('map-caption');
         if (caption && window.CARTO_BASEMAPS_KEY) caption.textContent = snapshot.active.length
-            ? 'SEATTLE OPERATIONS · SELECT A TRUCK TO VIEW ITS ROAD ROUTE'
+            ? 'SEATTLE OPERATIONS · LIVE COLOR-CODED ROUTES'
             : 'SEATTLE OPERATIONS · NO ACTIVE DISPATCHES';
+        const createButton = document.getElementById('create-dispatch');
+        if (createButton) createButton.disabled = snapshot.active.length >= autonomy.max_trucks;
         renderList();
         renderMap();
-        drawRoute(liveDispatch(snapshot.active.find(d => d.id === selectedId), receivedAt));
 
         const seen = new Set(JSON.parse(sessionStorage.getItem('dispatch_notices') || '[]'));
         (state.notices || []).forEach(item => {
@@ -290,11 +360,15 @@
             seen.add(item.id);
         });
         sessionStorage.setItem('dispatch_notices', JSON.stringify([...seen].slice(-100)));
+        if (state.notice_cursor) {
+            noticeCursor = state.notice_cursor;
+            sessionStorage.setItem('dispatch_notice_cursor', noticeCursor);
+        }
     }
 
     async function refresh() {
         try {
-            const response = await fetch('/api/dispatch');
+            const response = await fetch(`/api/dispatch?notice_after=${encodeURIComponent(noticeCursor)}`);
             if (!response.ok) throw new Error('Dispatch API unavailable');
             updateState(await response.json());
         } catch (error) {
@@ -302,6 +376,68 @@
             if (live) live.textContent = 'FLEET OFFLINE';
         }
     }
+
+    function applyAutonomy(settings) {
+        autonomy = {
+            enabled: Boolean(settings.enabled),
+            max_trucks: Math.max(1, Math.min(30, Number(settings.max_trucks) || 6))
+        };
+        const button = document.getElementById('autonomy-toggle');
+        const capacity = document.getElementById('max-active-trucks');
+        if (button) {
+            button.classList.toggle('is-on', autonomy.enabled);
+            button.textContent = autonomy.enabled ? 'AUTO ON' : 'AUTO OFF';
+            button.setAttribute('aria-pressed', String(autonomy.enabled));
+        }
+        if (capacity && document.activeElement !== capacity) capacity.value = autonomy.max_trucks;
+    }
+
+    async function saveAutonomy(updates) {
+        const response = await fetch('/api/dispatch/autonomy', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Fleet settings could not be saved.');
+        applyAutonomy(data.autonomy);
+        return data.autonomy;
+    }
+
+    fetch('/api/dispatch/autonomy')
+        .then(response => {
+            if (!response.ok) throw new Error('Fleet settings unavailable.');
+            return response.json();
+        })
+        .then(data => applyAutonomy(data.autonomy))
+        .catch(() => notice('AUTO MODE UNAVAILABLE', 'Fleet settings could not be loaded.', true));
+
+    document.getElementById('autonomy-toggle')?.addEventListener('click', async event => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+            const settings = await saveAutonomy({ enabled: !autonomy.enabled });
+            notice(settings.enabled ? 'AUTONOMOUS MODE ON' : 'AUTONOMOUS MODE OFF',
+                settings.enabled ? `Dispatching every 3 seconds, up to ${settings.max_trucks} active trucks.` : 'Automatic dispatching has stopped.');
+            await refresh();
+        } catch (error) {
+            notice('AUTO MODE UPDATE FAILED', error.message, true);
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    document.getElementById('max-active-trucks')?.addEventListener('change', async event => {
+        const input = event.currentTarget;
+        try {
+            const settings = await saveAutonomy({ max_trucks: Number(input.value) });
+            notice('FLEET CAPACITY UPDATED', `Maximum active trucks: ${settings.max_trucks}.`);
+            await refresh();
+        } catch (error) {
+            input.value = autonomy.max_trucks;
+            notice('CAPACITY UPDATE FAILED', error.message, true);
+        }
+    });
 
     fetch('/api/dispatch?catalog=1')
         .then(response => {
@@ -372,18 +508,30 @@
         if (map) {
             snapshot.active.forEach(dispatch => {
                 const current = liveDispatch(dispatch, now);
-                const point = positionOnRoute(current.route || [], current.progress);
+                const point = positionOnRoute(dispatch.id, current.route || [], current.progress);
                 const pair = markers.get(dispatch.id);
                 if (!point || !pair) return;
-                pair.halo.setLatLng(point);
-                pair.dot.setLatLng(point);
-                if (pair.dot.isPopupOpen()) pair.dot.getPopup().setLatLng(point);
+                pair.arrow.setLatLng(point);
+                const svg = pair.arrow.getElement()?.querySelector('.truck-arrow-svg');
+                if (svg) svg.style.transform = `rotate(${bearingOnRoute(dispatch.id, current.route || [], current.progress)}deg)`;
+                if (pair.arrow.isPopupOpen()) {
+                    const popup = pair.arrow.getPopup();
+                    popup.setLatLng(point);
+                    const content = popup.getElement();
+                    const speed = content?.querySelector('.truck-popup-speed');
+                    const progress = content?.querySelector('.truck-popup-progress');
+                    if (speed) speed.textContent = `${Number(current.speed_mph || 0).toFixed(1)} MPH`;
+                    if (progress) {
+                        const eta = Math.max(0, Math.ceil((current.eta_minutes || 0) * (1 - (current.progress || 0))));
+                        progress.textContent = `${Math.round((current.progress || 0) * 100)}% · ETA ${eta} MIN`;
+                    }
+                }
             });
             if (followingId) {
                 const dispatch = snapshot.active.find(item => item.id === followingId);
                 if (dispatch) {
                     const current = liveDispatch(dispatch, now);
-                    const point = positionOnRoute(current.route || [], current.progress);
+                    const point = positionOnRoute(dispatch.id, current.route || [], current.progress);
                     if (point) {
                         const screenPoint = map.latLngToContainerPoint(point);
                         const screenCenter = map.latLngToContainerPoint(map.getCenter());
