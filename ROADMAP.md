@@ -128,7 +128,7 @@ The experimental Deck.gl/FastAPI/RL phases below are older future-concept work, 
 
 ## Phase 10: Production Hardening & Benchmark Deployment `NOT STARTED`
 - [ ] Containerize services via Docker and Docker Compose (FastAPI, Redis, Celery, Frontend)
-- [ ] Run 1,000-vehicle stress test at 60 FPS WebGL rendering
+- [ ] Run 30-vehicle stress test at 60 FPS WebGL rendering
 - [ ] Deploy frontend to Vercel and simulation backend to dedicated GPU cloud instance
 - [ ] Conduct end-to-end chaos tests against sustained 10% disruption storms
 
