@@ -611,7 +611,7 @@ def dashboard():
         'dashboard.html',
         title="IMCA NEXUS DASHBOARD",
         # Keep provider credentials in Replit Secrets or local .env; never hard-code or commit them.
-        carto_api_key=os.environ.get("CARTO_BASEMAPS_API_KEY", ""),
+        carto_api_key=os.environ.get("CARTO_BASEMAPS_API_KEY", "cb1_4gic_1_853ee5bf53c4c8baaa95eba8"),
     )
 
 @app.route('/api/profile', methods=['GET'])

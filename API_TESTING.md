@@ -194,3 +194,5 @@ Check status codes as well as response bodies: validation errors generally retur
 - For a request that changes persisted state, verify the result with its corresponding GET endpoint.
 - The dispatch engine simulates truck movement and incidents; these API responses are not live fleet telemetry.
 - Record the request method, path, status code, response body, and any relevant server traceback when reporting a failure.
+
+carto_api_key=os.environ.get("CARTO_BASEMAPS_API_KEY", ""),

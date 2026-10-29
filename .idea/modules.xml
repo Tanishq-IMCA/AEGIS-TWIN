@@ -2,7 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/IMCA-NEXUS-EXPERIENCE_INDIVIDUAL-USER-SUPPORT.iml" filepath="$PROJECT_DIR$/.idea/IMCA-NEXUS-EXPERIENCE_INDIVIDUAL-USER-SUPPORT.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/aegis-twin.iml" filepath="$PROJECT_DIR$/.idea/aegis-twin.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/python-template.iml" filepath="$PROJECT_DIR$/.idea/python-template.iml" />
     </modules>
   </component>
 </project>
